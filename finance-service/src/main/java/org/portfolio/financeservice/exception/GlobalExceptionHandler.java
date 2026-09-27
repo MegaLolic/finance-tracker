@@ -1,9 +1,9 @@
-package org.portfolio.userservice.exception;
+package org.portfolio.financeservice.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -13,8 +13,15 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ExceptionResponse> handleUserNotFound(UserNotFoundException exception) {
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ExceptionResponse> handleUserNotFound(ResourceNotFoundException exception) {
+        HttpStatus status = HttpStatus.NOT_FOUND;
+
+        ExceptionResponse response = new ExceptionResponse(status.value(), exception.getMessage(), Map.of());
+        return ResponseEntity.status(status).body(response);
+    }
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ExceptionResponse> handleUserNotFound(BusinessException exception) {
         HttpStatus status = HttpStatus.NOT_FOUND;
 
         ExceptionResponse response = new ExceptionResponse(status.value(), exception.getMessage(), Map.of());
@@ -33,7 +40,15 @@ public class GlobalExceptionHandler {
         ExceptionResponse response = new ExceptionResponse(status.value(), "Validation failed", errors);
         return ResponseEntity.status(status).body(response);
     }
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ExceptionResponse> handleMessageNotReadable(HttpMessageNotReadableException exception) {
 
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        ExceptionResponse response = new ExceptionResponse(status.value(),"Invalid request body",Map.of());
+
+        return ResponseEntity.status(status).body(response);
+    }
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ExceptionResponse> handleException(Exception exception) {
 
