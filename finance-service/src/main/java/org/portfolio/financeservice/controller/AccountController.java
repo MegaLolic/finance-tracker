@@ -6,6 +6,8 @@ import org.portfolio.financeservice.service.AccountService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,17 +23,17 @@ public class AccountController {
     }
 
     @PostMapping
-    public ResponseEntity<AccountDto> createAccount(@Valid @RequestBody AccountDto accountDto, Authentication authentication){
-        Long userId=Long.valueOf(authentication.getName());
+    public ResponseEntity<AccountDto> createAccount(@Valid @RequestBody AccountDto accountDto, @AuthenticationPrincipal Jwt jwt){
+        Long userId=jwt.getClaim("userId");
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(accountService.createAccount(userId, accountDto));
     }
     @GetMapping
-    public ResponseEntity<List<AccountDto>> getAccountsByUserId(@RequestParam Long userId) {
-        List<AccountDto> accounts = accountService.getAccountsByUserId(userId);
-        return ResponseEntity.ok(accounts);
+    public ResponseEntity<List<AccountDto>> getAccountsByUserId(@AuthenticationPrincipal Jwt jwt) {
+        Long userId=jwt.getClaim("userId");
+        return ResponseEntity.ok(accountService.getAccountsByUserId(userId));
     }
     @GetMapping("/{id}")
     public ResponseEntity<AccountDto> getAccountById(@PathVariable Long id) {

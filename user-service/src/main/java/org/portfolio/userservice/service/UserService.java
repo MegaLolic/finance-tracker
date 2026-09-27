@@ -28,14 +28,14 @@ public class UserService {
 
     public JwtAuthenticationDto signIn(UserCredentialsDto userCredentialsDto) throws AuthenticationException {
         User user=findUserByCredential(userCredentialsDto);
-        return jwtService.generateAuthToken(user.getEmail());
+        return jwtService.generateAuthToken(user.getId(),user.getEmail());
     }
 
     public JwtAuthenticationDto refreshToken(RefreshTokenDto refreshTokenDto) throws Exception {
         String refreshToken=refreshTokenDto.getRefreshToken();
-        if(refreshToken!=null && jwtService.validateJwtToken(refreshToken)){
+        if(refreshToken!=null && jwtService.validateRefreshToken(refreshToken)){
             User user=findByEmail(jwtService.getEmailFromToken(refreshToken));
-            return jwtService.refreshBaseToken(user.getEmail(), refreshToken);
+            return jwtService.refreshBaseToken(refreshToken);
         }
         throw new AuthenticationException("Invalid refresh token");
     }

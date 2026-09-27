@@ -6,6 +6,8 @@ import org.portfolio.financeservice.service.CategoryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,8 +23,8 @@ public class CategoryController {
     }
 
     @PostMapping
-    public ResponseEntity<CategoryDto> createCategory(@Valid @RequestBody CategoryDto categoryDto, Authentication authentication) {
-        Long userId=Long.valueOf(authentication.getName());
+    public ResponseEntity<CategoryDto> createCategory(@Valid @RequestBody CategoryDto categoryDto, @AuthenticationPrincipal Jwt jwt){
+        Long userId=jwt.getClaim("userId");
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -30,9 +32,9 @@ public class CategoryController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CategoryDto>> getCategoriesByUserId(@RequestParam Long userId) {
-        List<CategoryDto> categories = categoryService.getCategoriesByUserId(userId);
-        return ResponseEntity.ok(categories);
+    public ResponseEntity<List<CategoryDto>> getCategoriesByUserId(@AuthenticationPrincipal Jwt jwt) {
+        Long userId=jwt.getClaim("userId");
+        return ResponseEntity.ok(categoryService.getCategoriesByUserId(userId));
     }
 
     @GetMapping("/{id}")

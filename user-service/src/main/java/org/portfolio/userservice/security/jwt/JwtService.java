@@ -27,64 +27,79 @@ public class JwtService {
 
     }
 
-    public JwtAuthenticationDto generateAuthToken(String email) {
+    public JwtAuthenticationDto generateAuthToken(Long userId,String email) {
         JwtAuthenticationDto jwtDto=new JwtAuthenticationDto();
-        jwtDto.setToken(generateJwtToken(email));
-        jwtDto.setRefreshToken(generateRefreshToken(email));
+        jwtDto.setToken(generateJwtToken(userId,email));
+        jwtDto.setRefreshToken(generateRefreshToken(userId,email));
         return jwtDto;
     }
 
-    public String getEmailFromToken(String token){
-        Claims claims= Jwts.parser()
+    public String getEmailFromToken(String token) {
+        Claims claims = parseToken(token);
+        return claims.get("email", String.class);
+    }
+
+    public boolean validateAccessToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            return "access".equals(claims.get("type", String.class));
+        } catch (JwtException e) {
+            log.error("Invalid token", e);
+            return false;
+        }
+    }
+
+    public boolean validateRefreshToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            return "refresh".equals(claims.get("type", String.class));
+        } catch (JwtException e) {
+            log.error("Invalid refresh token", e);
+            return false;
+        }
+    }
+
+    private Claims parseToken(String token) {
+        return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return  claims.getSubject();
     }
 
-    public boolean validateJwtToken(String token){
-        try{
-            Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-            return true;
-        }catch (ExpiredJwtException exception){
-            log.error("Expired JwtException",exception);
-        }catch (UnsupportedJwtException exception){
-            log.error("Unsupported JwtException",exception);
-        }catch (MalformedJwtException exception){
-            log.error("Malformed JwtException",exception);
-        }catch (SecurityException exception){
-            log.error("Security JwtException",exception);
-        }catch (Exception exception){
-            log.error("invalid token", exception);
-        }
-        return false;
-    }
-
-    public JwtAuthenticationDto refreshBaseToken(String email, String refreshToken){
+    public JwtAuthenticationDto refreshBaseToken(String refreshToken){
         JwtAuthenticationDto jwtDto=new JwtAuthenticationDto();
-        jwtDto.setToken(generateJwtToken(email));
+        Long userId = getUserIdFromToken(refreshToken);
+        String email = getEmailFromToken(refreshToken);
+        jwtDto.setToken(generateJwtToken(userId,email));
         jwtDto.setRefreshToken(refreshToken);
         return jwtDto;
     }
 
+    private Long getUserIdFromToken(String token) {
+        Claims claims = parseToken(token);
+        return claims.get("userId", Long.class);
+    }
 
-    private String generateJwtToken(String email){
+
+    private String generateJwtToken(Long userId,String email){
         Date date=Date.from(LocalDateTime.now().plusMinutes(10).atZone(ZoneId.systemDefault()).toInstant());
         return Jwts.builder()
                 .subject(email)
+                .claim("userId",userId)
+                .claim("email",email)
+                .claim("type","access")
                 .expiration(date)
                 .signWith(secretKey)
                 .compact();
     }
-    private String generateRefreshToken(String email){
+    private String generateRefreshToken(Long userId,String email){
         Date date=Date.from(LocalDateTime.now().plusDays(1).atZone(ZoneId.systemDefault()).toInstant());
         return Jwts.builder()
                 .subject(email)
+                .claim("userId",userId)
+                .claim("email",email)
+                .claim("type","refresh")
                 .expiration(date)
                 .signWith(secretKey)
                 .compact();

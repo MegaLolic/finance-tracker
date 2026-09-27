@@ -1,6 +1,7 @@
 package org.portfolio.financeservice.service;
 
 import org.portfolio.financeservice.client.UserClient;
+import org.portfolio.financeservice.dto.CategoryDto;
 import org.portfolio.financeservice.dto.TransactionDto;
 import org.portfolio.financeservice.dto.TransactionFilterDto;
 import org.portfolio.financeservice.entity.Account;
@@ -166,5 +167,12 @@ public class TransactionService {
             case INCOME -> amount;
             case EXPENSE -> amount.negate();
         };
+    }
+
+    public List<TransactionDto> getTransactionsByUserId(Long userId) {
+        return transactionRepository.findTransactionsByUserId(userId)
+                .stream()
+                .map(this::toDto)
+                .toList();
     }
 }
