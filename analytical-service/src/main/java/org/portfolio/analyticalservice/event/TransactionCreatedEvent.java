@@ -1,4 +1,4 @@
-package org.portfolio.financeservice.event;
+package org.portfolio.analyticalservice.event;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 

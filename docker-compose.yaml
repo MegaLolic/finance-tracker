@@ -79,7 +79,30 @@ services:
       - prometheus
     restart: unless-stopped
 
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    ports:
+       - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: analytical_db
+    volumes:
+      - mongodb_data:/data/db
+
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    ports:
+      - "8088:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017/
+      ME_CONFIG_BASICAUTH: false
+    depends_on:
+      - mongodb
+
 volumes:
   db-data:
   db-data-log:
   grafana-data:
+  mongodb_data:
