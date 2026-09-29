@@ -78,6 +78,7 @@ public class TransactionService {
                         saved.getAccountId(),
                         saved.getCategoryId(),
                         saved.getAmount(),
+                        saved.getDescription(),
                         category.getType().name(),
                         saved.getCreatedAt()
                 )

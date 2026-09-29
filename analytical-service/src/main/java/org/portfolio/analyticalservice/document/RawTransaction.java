@@ -27,6 +27,7 @@ public class RawTransaction {
     private Long categoryId;
     private BigDecimal amount;
     private String description;
+    private String categoryType;
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Instant createdAt;
 }

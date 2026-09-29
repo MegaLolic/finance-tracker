@@ -25,11 +25,12 @@ public class TransactionEventListener {
                 .accountId(event.accountId())
                 .categoryId(event.categoryId())
                 .description(event.description())
+                .categoryType(event.categoryType())
                 .amount(event.amount())
                 .createdAt(event.createdAt())
                 .build();
 
         repository.save(doc);
-        log.info("Saved to MongoDB: {}",doc.getId());
+        log.info("Saved to MongoDB: {}, with params {}",doc.getId(), doc.toString());
     }
 }

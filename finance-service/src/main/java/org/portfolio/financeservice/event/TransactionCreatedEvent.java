@@ -12,6 +12,7 @@ public record TransactionCreatedEvent (
         Long categoryId,
         BigDecimal amount,
         String description,
+        String categoryType,
         @JsonFormat(shape = JsonFormat.Shape.STRING)
         Instant createdAt
 ) {
