@@ -28,7 +28,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public JwtAuthenticationDto refresh(@RequestBody RefreshTokenDto refreshTokenDto) throws Exception{
-        return userService.refreshToken(refreshTokenDto);
+    public ResponseEntity<JwtAuthenticationDto> refresh(@RequestBody RefreshTokenDto refreshTokenDto) throws Exception{
+        return ResponseEntity.ok(userService.refreshToken(refreshTokenDto));
     }
 }
