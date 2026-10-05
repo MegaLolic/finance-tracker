@@ -4,7 +4,6 @@ import org.portfolio.userservice.dto.*;
 import org.portfolio.userservice.entity.User;
 import org.portfolio.userservice.exception.UserNotFoundException;
 import org.portfolio.userservice.repository.UserRepository;
-import org.portfolio.userservice.security.SecurityConfig;
 import org.portfolio.userservice.security.jwt.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,7 +19,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public UserService(UserRepository userRepository, SecurityConfig securityConfig, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;

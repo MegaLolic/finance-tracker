@@ -27,7 +27,7 @@ public class JwtService {
 
     }
 
-    public JwtAuthenticationDto generateAuthToken(Long userId,String email) {
+    public JwtAuthenticationDto generateAuthToken(Long userId, String email) {
         JwtAuthenticationDto jwtDto=new JwtAuthenticationDto();
         jwtDto.setToken(generateJwtToken(userId,email));
         jwtDto.setRefreshToken(generateRefreshToken(userId,email));

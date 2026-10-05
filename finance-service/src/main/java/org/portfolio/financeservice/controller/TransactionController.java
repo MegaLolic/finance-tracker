@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/transactions")
+@RequestMapping("/finance/transactions")
 public class TransactionController {
 
     private final TransactionService transactionService;

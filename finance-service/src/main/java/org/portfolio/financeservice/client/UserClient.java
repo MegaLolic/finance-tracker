@@ -34,6 +34,6 @@ public class UserClient {
                                 .map(body -> new ResourceNotFoundException("User", userId))
                 )
                 .bodyToMono(UserDto.class)
-                .block();   // ← блокируем, потому что мы в MVC
+                .block();
     }
 }
