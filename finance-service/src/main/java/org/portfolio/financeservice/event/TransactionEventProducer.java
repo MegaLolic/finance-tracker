@@ -7,7 +7,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 @Slf4j
 @Configuration
 public class TransactionEventProducer {
-    private static final String TOPIC="transaction-events";
+    private static final String TOPIC="${topic.name}";
 
     private final KafkaTemplate<String,TransactionCreatedEvent> kafkaTemplate;
 

@@ -23,6 +23,7 @@ public class Transaction {
     private Long userId;
     private Long accountId;
     private Long categoryId;
+    @Column(precision = 19, scale = 2, nullable = false)
     private BigDecimal amount;
     private String description;
     private Instant createdAt;

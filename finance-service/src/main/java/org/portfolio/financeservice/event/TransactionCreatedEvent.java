@@ -7,8 +7,8 @@ import java.time.Instant;
 
 public record TransactionCreatedEvent (
         Long transactionId,
-        Long accountId,
         Long userId,
+        Long accountId,
         Long categoryId,
         BigDecimal amount,
         String description,

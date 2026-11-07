@@ -1,6 +1,5 @@
 package org.portfolio.financeservice.config;
 
-import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +18,7 @@ import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
 @Configuration
@@ -27,7 +27,11 @@ public class SecurityConfig {
 
     @Bean
     public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
-        SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 64) {
+            throw new IllegalStateException("jwt.secret must contain at least 64 UTF-8 bytes for HS512");
+        }
+        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA512");
 
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key)
                 .macAlgorithm(MacAlgorithm.HS512)
@@ -39,9 +43,16 @@ public class SecurityConfig {
                         : OAuth2TokenValidatorResult.failure(
                         new OAuth2Error("invalid_token", "Token is not an access token", null));
 
+        OAuth2TokenValidator<Jwt> userIdValidator = jwt -> {
+            Object userId = jwt.getClaim("userId");
+            return userId instanceof Number number && number.longValue() > 0
+                    ? OAuth2TokenValidatorResult.success()
+                    : OAuth2TokenValidatorResult.failure(
+                    new OAuth2Error("invalid_token", "Token does not contain a valid userId", null));
+        };
+
         decoder.setJwtValidator(new org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefault(),
-                accessTokenValidator
+                JwtValidators.createDefault(), accessTokenValidator, userIdValidator
         ));
 
         return decoder;
