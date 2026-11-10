@@ -20,7 +20,7 @@ public class CategoryService {
         this.userClient = userClient;
     }
 
-    public CategoryDto createCategory(Long userId,CategoryDto input) {
+    public CategoryDto createCategory(Long userId, CategoryDto input) {
         userClient.getUserById(userId);
 
         final Category createdCategory = Category.builder()
@@ -28,7 +28,9 @@ public class CategoryService {
                 .type(input.getType())
                 .userId(userId)
                 .build();
+
         final Category saved = categoryRepository.save(createdCategory);
+
         return toDto(saved);
     }
 
@@ -40,23 +42,27 @@ public class CategoryService {
                 .build();
     }
 
-    public CategoryDto getCategoryById(Long id) {
-        return categoryRepository.findById(id)
+    public CategoryDto getCategoryById(Long id, Long userId) {
+        return categoryRepository.findCategoryByUserId(id, userId)
                 .map(this::toDto)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
     }
 
-    public void updateCategory(Long id, CategoryDto categoryDto) {
-        Category updatedCategory = categoryRepository.findById(id)
+    public void updateCategory(Long id, Long userId, CategoryDto categoryDto) {
+        Category updatedCategory = categoryRepository
+                .findCategoryByUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
 
         updatedCategory.setName(categoryDto.getName());
+
         categoryRepository.save(updatedCategory);
     }
 
-    public void deleteCategory(Long id) {
-        Category category = categoryRepository.findById(id)
+    public void deleteCategory(Long id, Long userId) {
+        Category category = categoryRepository
+                .findCategoryByUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
+
         categoryRepository.delete(category);
     }
 

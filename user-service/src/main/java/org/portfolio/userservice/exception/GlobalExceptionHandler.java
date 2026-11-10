@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.nio.file.AccessDeniedException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,6 +53,19 @@ public class GlobalExceptionHandler {
 
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         ExceptionResponse response = new ExceptionResponse(status.value(), "Internal server error", Map.of());
+
+        return ResponseEntity.status(status).body(response);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ExceptionResponse> handleAccessDeniedException(AccessDeniedException exception) {
+        HttpStatus status = HttpStatus.FORBIDDEN;
+
+        ExceptionResponse response = new ExceptionResponse(
+                status.value(),
+                exception.getMessage(),
+                Map.of()
+        );
 
         return ResponseEntity.status(status).body(response);
     }

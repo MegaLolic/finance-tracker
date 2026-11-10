@@ -34,31 +34,52 @@ public class TransactionController {
     }
 
     @GetMapping("/search")
-    public List<TransactionDto> getTransactions(
-            @ModelAttribute TransactionFilterDto filter
-    ) {
-        return transactionService.getTransactions(filter);
+    public ResponseEntity<List<TransactionDto>> getTransactions(
+            @ModelAttribute TransactionFilterDto filter,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Long userId = jwt.getClaim("userId");
+
+        filter.setUserId(userId);
+
+        return ResponseEntity.ok(transactionService.getTransactions(filter));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TransactionDto> getTransactionById(@PathVariable Long id) {
-        TransactionDto transactionDto = transactionService.getTransactionById(id);
-        if (transactionDto == null) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-        return ResponseEntity.ok(transactionDto);
+    public ResponseEntity<TransactionDto> getTransactionById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Long userId = jwt.getClaim("userId");
+
+        return ResponseEntity.ok(
+                transactionService.getTransactionById(id, userId)
+        );
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TransactionDto> updateTransaction(@PathVariable Long id,@Valid @RequestBody TransactionDto transactionDto) {
-            transactionService.updateTransaction(id, transactionDto);
-            return ResponseEntity.ok(transactionDto);
+    public ResponseEntity<TransactionDto> updateTransaction(
+            @PathVariable Long id,
+            @Valid @RequestBody TransactionDto transactionDto,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Long userId = jwt.getClaim("userId");
+
+        transactionService.updateTransaction(id, userId, transactionDto);
+
+        return ResponseEntity.ok(transactionDto);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTransaction(@PathVariable Long id) {
-            transactionService.deleteTransaction(id);
-            return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> deleteTransaction(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Long userId = jwt.getClaim("userId");
+
+        transactionService.deleteTransaction(id, userId);
+
+        return ResponseEntity.noContent().build();
     }
     @GetMapping
     public ResponseEntity<List<TransactionDto>> getTransactionsByUserId(@AuthenticationPrincipal Jwt jwt) {

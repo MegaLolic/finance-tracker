@@ -1,7 +1,6 @@
 package org.portfolio.financeservice.service;
 
 import org.portfolio.financeservice.client.UserClient;
-import org.portfolio.financeservice.dto.CategoryDto;
 import org.portfolio.financeservice.dto.TransactionDto;
 import org.portfolio.financeservice.dto.TransactionFilterDto;
 import org.portfolio.financeservice.entity.Account;
@@ -9,7 +8,6 @@ import org.portfolio.financeservice.entity.Category;
 import org.portfolio.financeservice.entity.Transaction;
 import org.portfolio.financeservice.event.TransactionCreatedEvent;
 import org.portfolio.financeservice.event.TransactionEventProducer;
-import org.portfolio.financeservice.exception.BusinessException;
 import org.portfolio.financeservice.exception.ResourceNotFoundException;
 import org.portfolio.financeservice.repository.AccountRepository;
 import org.portfolio.financeservice.repository.CategoryRepository;
@@ -33,7 +31,14 @@ public class TransactionService {
     private final AccountService accountService;
     private final TransactionEventProducer transactionEventProducer;
 
-    public TransactionService(TransactionRepository transactionRepository, AccountRepository accountRepository, CategoryRepository categoryRepository, UserClient userClient, AccountService accountService, TransactionEventProducer transactionEventProducer) {
+    public TransactionService(
+            TransactionRepository transactionRepository,
+            AccountRepository accountRepository,
+            CategoryRepository categoryRepository,
+            UserClient userClient,
+            AccountService accountService,
+            TransactionEventProducer transactionEventProducer) {
+
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
@@ -42,23 +47,21 @@ public class TransactionService {
         this.transactionEventProducer = transactionEventProducer;
     }
 
+    @Transactional
     public TransactionDto createTransaction(Long userId, TransactionDto input) {
         userClient.getUserById(userId);
 
-        Account account= accountRepository
-                .findById(input.getAccountId())
-                .orElseThrow(()->new ResourceNotFoundException("Account", input.getAccountId()));
-        Category category = categoryRepository
-                .findById(input.getCategoryId())
-                .orElseThrow(() -> new ResourceNotFoundException("Category",input.getCategoryId()));
-        if (!account.getUserId().equals(userId)) {
-            throw new BusinessException("Account does not belong to this user");
-        }
-        if (!category.getUserId().equals(userId)) {
-            throw new BusinessException("Category does not belong to this user");
-        }
+        Account account = accountRepository
+                .findAccountByUserId(input.getAccountId(), userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Account", input.getAccountId()));
 
-        final Transaction createdTransaction = Transaction.builder()
+        Category category = categoryRepository
+                .findCategoryByUserId(input.getCategoryId(), userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Category", input.getCategoryId()));
+
+        Transaction createdTransaction = Transaction.builder()
                 .userId(userId)
                 .accountId(account.getId())
                 .categoryId(category.getId())
@@ -67,9 +70,15 @@ public class TransactionService {
                 .createdAt(Instant.now())
                 .build();
 
-        final Transaction saved = transactionRepository.save(createdTransaction);
-        BigDecimal balanceChanged=getBalanceChange(saved.getAmount(),category);
-        accountService.changeBalance(saved.getAccountId(), balanceChanged);
+        Transaction saved = transactionRepository.save(createdTransaction);
+
+        BigDecimal balanceChanged = getBalanceChange(saved.getAmount(), category);
+
+        accountService.changeBalance(
+                saved.getAccountId(),
+                userId,
+                balanceChanged
+        );
 
         transactionEventProducer.sendTransactionCreated(
                 new TransactionCreatedEvent(
@@ -83,6 +92,7 @@ public class TransactionService {
                         saved.getCreatedAt()
                 )
         );
+
         return toDto(saved);
     }
 
@@ -97,74 +107,107 @@ public class TransactionService {
                 .build();
     }
 
-    public TransactionDto getTransactionById(Long id) {
-        return transactionRepository.findById(id)
+    public TransactionDto getTransactionById(Long id, Long userId) {
+        return transactionRepository
+                .findTransactionByUserId(id, userId)
                 .map(this::toDto)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", id));
     }
 
     @Transactional
-    public void updateTransaction(Long id, TransactionDto input) {
-        Transaction updatedTransaction = transactionRepository.findById(id)
+    public void updateTransaction(Long id, Long userId, TransactionDto input) {
+
+        Transaction updatedTransaction = transactionRepository
+                .findTransactionByUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", id));
 
-        Long oldAccountId = updatedTransaction.getAccountId();
+        Account oldAccount = accountRepository
+                .findAccountByUserId(updatedTransaction.getAccountId(), userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Account", updatedTransaction.getAccountId()));
+
+        Category oldCategory = categoryRepository
+                .findCategoryByUserId(updatedTransaction.getCategoryId(), userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Category", updatedTransaction.getCategoryId()));
+
+        Account newAccount = accountRepository
+                .findAccountByUserId(input.getAccountId(), userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Account", input.getAccountId()));
+
+        Category newCategory = categoryRepository
+                .findCategoryByUserId(input.getCategoryId(), userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Category", input.getCategoryId()));
+
+        BigDecimal oldBalanceChange = getBalanceChange(
+                updatedTransaction.getAmount(),
+                oldCategory
+        ).negate();
 
         accountService.changeBalance(
-                oldAccountId,
-                getBalanceChangeByCategoryId(
-                        updatedTransaction.getAmount(),
-                        updatedTransaction.getCategoryId()
-                ).negate()
+                oldAccount.getId(),
+                userId,
+                oldBalanceChange
         );
-        updatedTransaction.setAccountId(input.getAccountId());
-        updatedTransaction.setCategoryId(input.getCategoryId());
+
+        updatedTransaction.setAccountId(newAccount.getId());
+        updatedTransaction.setCategoryId(newCategory.getId());
         updatedTransaction.setAmount(input.getAmount());
         updatedTransaction.setDescription(input.getDescription());
 
-        accountService.changeBalance(
-                updatedTransaction.getAccountId(),
-                getBalanceChangeByCategoryId(
-                        updatedTransaction.getAmount(),
-                        updatedTransaction.getCategoryId()));
+        BigDecimal newBalanceChange = getBalanceChange(
+                updatedTransaction.getAmount(),
+                newCategory
+        );
 
+        accountService.changeBalance(
+                newAccount.getId(),
+                userId,
+                newBalanceChange
+        );
 
         transactionRepository.save(updatedTransaction);
     }
 
-    public void deleteTransaction(Long id) {
-        Transaction transaction = transactionRepository.findById(id)
+    @Transactional
+    public void deleteTransaction(Long id, Long userId) {
+
+        Transaction transaction = transactionRepository
+                .findTransactionByUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", id));
+
+        Category category = categoryRepository
+                .findCategoryByUserId(transaction.getCategoryId(), userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Category", transaction.getCategoryId()));
+
         accountService.changeBalance(
                 transaction.getAccountId(),
-                getBalanceChangeByCategoryId(
-                        transaction.getAmount(),
-                        transaction.getCategoryId()
-                ).negate());
-        transactionRepository.delete(transaction);
+                userId,
+                getBalanceChange(transaction.getAmount(), category).negate()
+        );
 
+        transactionRepository.delete(transaction);
     }
 
-    public List<TransactionDto> getTransactions(TransactionFilterDto filter){
+    public List<TransactionDto> getTransactions(TransactionFilterDto filter) {
         if (filter.getUserId() == null) {
             return List.of();
         }
-        Specification<Transaction> specification=TransactionSpecification.filter(filter);
+
+        Specification<Transaction> specification =
+                TransactionSpecification.filter(filter);
+
         return transactionRepository.findAll(specification)
                 .stream()
                 .map(this::toDto)
                 .toList();
     }
-    private BigDecimal getBalanceChange(BigDecimal amount, Category category){
-        return switch (category.getType()){
-            case INCOME -> amount;
-            case EXPENSE -> amount.negate();
-        };
-    }
-    private BigDecimal getBalanceChangeByCategoryId(BigDecimal amount, Long categoryId){
-        Category category=categoryRepository.findById(categoryId)
-                .orElseThrow(()->new ResourceNotFoundException("Category",categoryId));
-        return switch (category.getType()){
+
+    private BigDecimal getBalanceChange(BigDecimal amount, Category category) {
+        return switch (category.getType()) {
             case INCOME -> amount;
             case EXPENSE -> amount.negate();
         };

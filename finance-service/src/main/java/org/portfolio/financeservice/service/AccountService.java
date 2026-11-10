@@ -49,9 +49,10 @@ public class AccountService {
                 .map(this::toDto)
                 .orElseThrow(()->new ResourceNotFoundException("Account",id));
     }
-
-    public void updateAccount(Long id,AccountDto accountDto){
-        Account updatedAccount=accountRepository.findById(id).orElseThrow(()->new ResourceNotFoundException("Account", id));
+    @Transactional
+    public void updateAccount(Long id, Long userId, AccountDto accountDto) {
+        Account updatedAccount = accountRepository.findAccountByUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account", id));
 
         updatedAccount.setName(accountDto.getName());
         updatedAccount.setBalance(accountDto.getBalance());
@@ -59,9 +60,11 @@ public class AccountService {
 
         accountRepository.save(updatedAccount);
     }
+    @Transactional
+    public void deleteAccount(Long id, Long userId) {
+        Account account = accountRepository.findAccountByUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account", id));
 
-    public void deleteAccount(Long id) {
-        Account account=accountRepository.findById(id).orElseThrow(()->new ResourceNotFoundException("Account", id));
         accountRepository.delete(account);
     }
 
@@ -72,10 +75,17 @@ public class AccountService {
                 .toList();
     }
 
+    public AccountDto getAccountById(Long id, Long userId) {
+        return accountRepository.findAccountByUserId(id, userId)
+                .map(this::toDto)
+                .orElseThrow(() -> new ResourceNotFoundException("Account", id));
+    }
+
     @Transactional
-    public void changeBalance(Long accountId, BigDecimal amount){
-        Account account=accountRepository.findById(accountId)
-                .orElseThrow(()->new ResourceNotFoundException("Account",accountId));
+    public void changeBalance(Long accountId, Long userId, BigDecimal amount) {
+        Account account = accountRepository.findAccountByUserId(accountId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account", accountId));
+
         account.setBalance(account.getBalance().add(amount));
         accountRepository.save(account);
     }

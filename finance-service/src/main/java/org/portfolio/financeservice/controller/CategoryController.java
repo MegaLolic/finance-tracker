@@ -38,23 +38,39 @@ public class CategoryController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CategoryDto> getCategoryById(@PathVariable Long id) {
-        CategoryDto categoryDto = categoryService.getCategoryById(id);
-        if (categoryDto == null) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-        return ResponseEntity.ok(categoryDto);
+    public ResponseEntity<CategoryDto> getCategoryById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Long userId = jwt.getClaim("userId");
+
+        return ResponseEntity.ok(
+                categoryService.getCategoryById(id, userId)
+        );
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<String> updateCategory(@PathVariable Long id,@Valid @RequestBody CategoryDto categoryDto) {
-            categoryService.updateCategory(id, categoryDto);
-            return ResponseEntity.ok("Category updated successfully");
+    public ResponseEntity<String> updateCategory(
+            @PathVariable Long id,
+            @Valid @RequestBody CategoryDto categoryDto,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Long userId = jwt.getClaim("userId");
+
+        categoryService.updateCategory(id, userId, categoryDto);
+
+        return ResponseEntity.ok("Category updated successfully");
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
-            categoryService.deleteCategory(id);
-            return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> deleteCategory(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Long userId = jwt.getClaim("userId");
+
+        categoryService.deleteCategory(id, userId);
+
+        return ResponseEntity.noContent().build();
     }
 }
