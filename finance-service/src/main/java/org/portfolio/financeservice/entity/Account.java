@@ -21,8 +21,13 @@ public class Account {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     private Long userId;
     private String name;
+
     @Column(precision = 19, scale = 2, nullable = false)
     private BigDecimal balance;
 

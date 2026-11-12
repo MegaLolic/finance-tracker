@@ -1,6 +1,8 @@
 package org.portfolio.financeservice.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.groups.Default;
+import org.portfolio.financeservice.dto.OnUpdate;
 import org.portfolio.financeservice.dto.CategoryDto;
 import org.portfolio.financeservice.dto.TransactionDto;
 import org.portfolio.financeservice.dto.TransactionFilterDto;
@@ -11,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 
@@ -60,24 +63,23 @@ public class TransactionController {
     @PutMapping("/{id}")
     public ResponseEntity<TransactionDto> updateTransaction(
             @PathVariable Long id,
-            @Valid @RequestBody TransactionDto transactionDto,
+            @Validated({Default.class, OnUpdate.class}) @RequestBody TransactionDto transactionDto,
             @AuthenticationPrincipal Jwt jwt) {
 
         Long userId = jwt.getClaim("userId");
 
-        transactionService.updateTransaction(id, userId, transactionDto);
-
-        return ResponseEntity.ok(transactionDto);
+        return ResponseEntity.ok(transactionService.updateTransaction(id, userId, transactionDto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTransaction(
             @PathVariable Long id,
+            @RequestParam Long version,
             @AuthenticationPrincipal Jwt jwt) {
 
         Long userId = jwt.getClaim("userId");
 
-        transactionService.deleteTransaction(id, userId);
+        transactionService.deleteTransaction(id, userId, version);
 
         return ResponseEntity.noContent().build();
     }

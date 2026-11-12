@@ -20,6 +20,11 @@ public class Transaction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     private Long userId;
     private Long accountId;
     private Long categoryId;

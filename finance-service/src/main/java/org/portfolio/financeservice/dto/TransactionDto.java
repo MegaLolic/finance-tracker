@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,6 +21,9 @@ import java.time.Instant;
 public class TransactionDto {
     private Long id;
 
+    @NotNull(groups = OnUpdate.class, message = "Version is required for updates")
+    @PositiveOrZero(message = "Version must not be negative")
+    private Long version;
 
     @NotNull(message = "Account ID is required")
     @Positive(message = "Account ID must be positive")

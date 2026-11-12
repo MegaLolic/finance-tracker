@@ -7,10 +7,12 @@ import org.portfolio.financeservice.entity.Account;
 import org.portfolio.financeservice.exception.ResourceNotFoundException;
 import org.portfolio.financeservice.repository.AccountRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class AccountService {
@@ -39,6 +41,7 @@ public class AccountService {
     private AccountDto toDto(Account account) {
         return AccountDto.builder()
                 .id(account.getId())
+                .version(account.getVersion())
                 .name(account.getName())
                 .balance(account.getBalance())
                 .currency(account.getCurrency())
@@ -50,20 +53,28 @@ public class AccountService {
                 .orElseThrow(()->new ResourceNotFoundException("Account",id));
     }
     @Transactional
-    public void updateAccount(Long id, Long userId, AccountDto accountDto) {
+    public AccountDto updateAccount(Long id, Long userId, AccountDto accountDto) {
         Account updatedAccount = accountRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", id));
+
+        if (!Objects.equals(accountDto.getVersion(), updatedAccount.getVersion())) {
+            throw new ObjectOptimisticLockingFailureException(Account.class, id);
+        }
 
         updatedAccount.setName(accountDto.getName());
         updatedAccount.setBalance(accountDto.getBalance());
         updatedAccount.setCurrency(accountDto.getCurrency());
 
-        accountRepository.save(updatedAccount);
+        return toDto(accountRepository.saveAndFlush(updatedAccount));// save through JPA(save) and sent changes in DB(flush)
     }
     @Transactional
-    public void deleteAccount(Long id, Long userId) {
+    public void deleteAccount(Long id, Long userId, Long version) {
         Account account = accountRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", id));
+
+        if (!Objects.equals(version, account.getVersion())) {
+            throw new ObjectOptimisticLockingFailureException(Account.class, id);
+        }
 
         accountRepository.delete(account);
     }

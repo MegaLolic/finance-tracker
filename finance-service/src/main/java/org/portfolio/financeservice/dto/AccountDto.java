@@ -6,6 +6,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +24,10 @@ public class AccountDto {
 
 
     private Long id;
+
+    @NotNull(groups = OnUpdate.class, message = "Version is required for updates")
+    @PositiveOrZero(message = "Version must not be negative")
+    private Long version;
 
     @NotBlank(message = "Name cannot be blank")
     @Size(max = 50,message = "Name must contain at most 50 characters")

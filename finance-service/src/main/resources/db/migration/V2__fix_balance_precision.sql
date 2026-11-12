@@ -1,0 +1,2 @@
+ALTER TABLE accounts
+    ALTER COLUMN balance TYPE DECIMAL(19, 2);

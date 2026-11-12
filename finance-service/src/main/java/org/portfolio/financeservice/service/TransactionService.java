@@ -7,7 +7,6 @@ import org.portfolio.financeservice.entity.Account;
 import org.portfolio.financeservice.entity.Category;
 import org.portfolio.financeservice.entity.Transaction;
 import org.portfolio.financeservice.event.TransactionCreatedEvent;
-import org.portfolio.financeservice.event.TransactionEventProducer;
 import org.portfolio.financeservice.exception.ResourceNotFoundException;
 import org.portfolio.financeservice.repository.AccountRepository;
 import org.portfolio.financeservice.repository.CategoryRepository;
@@ -15,11 +14,14 @@ import org.portfolio.financeservice.repository.TransactionRepository;
 import org.portfolio.financeservice.repository.specification.TransactionSpecification;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class TransactionService {
@@ -29,7 +31,7 @@ public class TransactionService {
     private final CategoryRepository categoryRepository;
     private final UserClient userClient;
     private final AccountService accountService;
-    private final TransactionEventProducer transactionEventProducer;
+    private final ApplicationEventPublisher eventPublisher; //publish inside Spring event,but not Kafka message
 
     public TransactionService(
             TransactionRepository transactionRepository,
@@ -37,14 +39,14 @@ public class TransactionService {
             CategoryRepository categoryRepository,
             UserClient userClient,
             AccountService accountService,
-            TransactionEventProducer transactionEventProducer) {
+            ApplicationEventPublisher eventPublisher) {
 
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
         this.userClient = userClient;
         this.accountService = accountService;
-        this.transactionEventProducer = transactionEventProducer;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -80,7 +82,9 @@ public class TransactionService {
                 balanceChanged
         );
 
-        transactionEventProducer.sendTransactionCreated(
+        transactionRepository.flush();
+
+        eventPublisher.publishEvent(
                 new TransactionCreatedEvent(
                         saved.getId(),
                         saved.getUserId(),
@@ -99,6 +103,7 @@ public class TransactionService {
     private TransactionDto toDto(Transaction transaction) {
         return TransactionDto.builder()
                 .id(transaction.getId())
+                .version(transaction.getVersion())
                 .accountId(transaction.getAccountId())
                 .categoryId(transaction.getCategoryId())
                 .amount(transaction.getAmount())
@@ -115,11 +120,15 @@ public class TransactionService {
     }
 
     @Transactional
-    public void updateTransaction(Long id, Long userId, TransactionDto input) {
+    public TransactionDto updateTransaction(Long id, Long userId, TransactionDto input) {
 
         Transaction updatedTransaction = transactionRepository
                 .findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", id));
+
+        if (!Objects.equals(input.getVersion(), updatedTransaction.getVersion())) {
+            throw new ObjectOptimisticLockingFailureException(Transaction.class, id);
+        }
 
         Account oldAccount = accountRepository
                 .findByIdAndUserId(updatedTransaction.getAccountId(), userId)
@@ -168,15 +177,19 @@ public class TransactionService {
                 newBalanceChange
         );
 
-        transactionRepository.save(updatedTransaction);
+        return toDto(transactionRepository.saveAndFlush(updatedTransaction));
     }
 
     @Transactional
-    public void deleteTransaction(Long id, Long userId) {
+    public void deleteTransaction(Long id, Long userId, Long version) {
 
         Transaction transaction = transactionRepository
                 .findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", id));
+
+        if (!Objects.equals(version, transaction.getVersion())) {
+            throw new ObjectOptimisticLockingFailureException(Transaction.class, id);
+        }
 
         Category category = categoryRepository
                 .findByIdAndUserId(transaction.getCategoryId(), userId)
