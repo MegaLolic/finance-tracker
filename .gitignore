@@ -1,4 +1,9 @@
 target/
+
+# Local credentials
+.env
+.env.*
+!.env.example
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

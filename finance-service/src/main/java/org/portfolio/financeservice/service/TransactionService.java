@@ -52,12 +52,12 @@ public class TransactionService {
         userClient.getUserById(userId);
 
         Account account = accountRepository
-                .findAccountByUserId(input.getAccountId(), userId)
+                .findByIdAndUserId(input.getAccountId(), userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Account", input.getAccountId()));
 
         Category category = categoryRepository
-                .findCategoryByUserId(input.getCategoryId(), userId)
+                .findByIdAndUserId(input.getCategoryId(), userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Category", input.getCategoryId()));
 
@@ -109,7 +109,7 @@ public class TransactionService {
 
     public TransactionDto getTransactionById(Long id, Long userId) {
         return transactionRepository
-                .findTransactionByUserId(id, userId)
+                .findByIdAndUserId(id, userId)
                 .map(this::toDto)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", id));
     }
@@ -118,26 +118,26 @@ public class TransactionService {
     public void updateTransaction(Long id, Long userId, TransactionDto input) {
 
         Transaction updatedTransaction = transactionRepository
-                .findTransactionByUserId(id, userId)
+                .findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", id));
 
         Account oldAccount = accountRepository
-                .findAccountByUserId(updatedTransaction.getAccountId(), userId)
+                .findByIdAndUserId(updatedTransaction.getAccountId(), userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Account", updatedTransaction.getAccountId()));
 
         Category oldCategory = categoryRepository
-                .findCategoryByUserId(updatedTransaction.getCategoryId(), userId)
+                .findByIdAndUserId(updatedTransaction.getCategoryId(), userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Category", updatedTransaction.getCategoryId()));
 
         Account newAccount = accountRepository
-                .findAccountByUserId(input.getAccountId(), userId)
+                .findByIdAndUserId(input.getAccountId(), userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Account", input.getAccountId()));
 
         Category newCategory = categoryRepository
-                .findCategoryByUserId(input.getCategoryId(), userId)
+                .findByIdAndUserId(input.getCategoryId(), userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Category", input.getCategoryId()));
 
@@ -175,11 +175,11 @@ public class TransactionService {
     public void deleteTransaction(Long id, Long userId) {
 
         Transaction transaction = transactionRepository
-                .findTransactionByUserId(id, userId)
+                .findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", id));
 
         Category category = categoryRepository
-                .findCategoryByUserId(transaction.getCategoryId(), userId)
+                .findByIdAndUserId(transaction.getCategoryId(), userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Category", transaction.getCategoryId()));
 

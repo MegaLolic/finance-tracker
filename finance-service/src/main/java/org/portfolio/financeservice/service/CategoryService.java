@@ -43,14 +43,14 @@ public class CategoryService {
     }
 
     public CategoryDto getCategoryById(Long id, Long userId) {
-        return categoryRepository.findCategoryByUserId(id, userId)
+        return categoryRepository.findByIdAndUserId(id, userId)
                 .map(this::toDto)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
     }
 
     public void updateCategory(Long id, Long userId, CategoryDto categoryDto) {
         Category updatedCategory = categoryRepository
-                .findCategoryByUserId(id, userId)
+                .findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
 
         updatedCategory.setName(categoryDto.getName());
@@ -60,7 +60,7 @@ public class CategoryService {
 
     public void deleteCategory(Long id, Long userId) {
         Category category = categoryRepository
-                .findCategoryByUserId(id, userId)
+                .findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
 
         categoryRepository.delete(category);

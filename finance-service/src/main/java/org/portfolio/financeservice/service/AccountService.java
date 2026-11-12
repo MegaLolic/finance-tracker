@@ -51,7 +51,7 @@ public class AccountService {
     }
     @Transactional
     public void updateAccount(Long id, Long userId, AccountDto accountDto) {
-        Account updatedAccount = accountRepository.findAccountByUserId(id, userId)
+        Account updatedAccount = accountRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", id));
 
         updatedAccount.setName(accountDto.getName());
@@ -62,7 +62,7 @@ public class AccountService {
     }
     @Transactional
     public void deleteAccount(Long id, Long userId) {
-        Account account = accountRepository.findAccountByUserId(id, userId)
+        Account account = accountRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", id));
 
         accountRepository.delete(account);
@@ -76,14 +76,14 @@ public class AccountService {
     }
 
     public AccountDto getAccountById(Long id, Long userId) {
-        return accountRepository.findAccountByUserId(id, userId)
+        return accountRepository.findByIdAndUserId(id, userId)
                 .map(this::toDto)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", id));
     }
 
     @Transactional
     public void changeBalance(Long accountId, Long userId, BigDecimal amount) {
-        Account account = accountRepository.findAccountByUserId(accountId, userId)
+        Account account = accountRepository.findByIdAndUserId(accountId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", accountId));
 
         account.setBalance(account.getBalance().add(amount));
