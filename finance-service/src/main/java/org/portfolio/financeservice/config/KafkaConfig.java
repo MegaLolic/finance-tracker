@@ -6,16 +6,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.kafka.core.KafkaAdmin;
 
 @Configuration
 public class KafkaConfig {
     @Bean
-    public NewTopic financePlacedTopic(@Value("${topic.name}") String topicName){
+    public NewTopic financePlacedTopic(@Value("${topic.name}") String topicName, KafkaAdmin admin){
+        admin.setModifyTopicConfigs(true);
         return TopicBuilder.name(topicName)
                 .partitions(3)
                 .replicas(1)
-                .config(TopicConfig.RETENTION_MS_CONFIG,"86400000")
-                .config(TopicConfig.RETENTION_BYTES_CONFIG,"81920")
+                .config(TopicConfig.RETENTION_MS_CONFIG,"604800000")
+                .config(TopicConfig.RETENTION_BYTES_CONFIG,"-1")
                 .build();
     }
 }

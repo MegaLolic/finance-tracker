@@ -9,7 +9,7 @@ import org.portfolio.financeservice.entity.Transaction;
 import org.portfolio.financeservice.repository.AccountRepository;
 import org.portfolio.financeservice.repository.CategoryRepository;
 import org.portfolio.financeservice.repository.TransactionRepository;
-import org.springframework.context.ApplicationEventPublisher;
+import org.portfolio.financeservice.event.OutboxService;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
@@ -22,9 +22,11 @@ class StaleVersionTest {
     @Test
     void staleAccountUpdateAndDeleteDoNotChangeTheAccount() {
         var repository = mock(AccountRepository.class);
-        var service = new AccountService(repository, mock(UserClient.class));
+        var service = new AccountService(repository, mock(UserClient.class),
+                mock(TransactionRepository.class), mock(CategoryRepository.class), mock(OutboxService.class));
         var account = Account.builder().id(1L).version(2L).balance(new BigDecimal("100.00")).build();
         when(repository.findByIdAndUserId(1L, 7L)).thenReturn(Optional.of(account));
+        when(repository.findForDeletion(1L, 7L)).thenReturn(Optional.of(account));
         var input = AccountDto.builder().version(1L).balance(BigDecimal.ZERO).build();
 
         assertThrows(ObjectOptimisticLockingFailureException.class,
@@ -42,7 +44,7 @@ class StaleVersionTest {
         var accounts = mock(AccountRepository.class);
         var categories = mock(CategoryRepository.class);
         var balances = mock(AccountService.class);
-        var events = mock(ApplicationEventPublisher.class);
+        var events = mock(OutboxService.class);
         var service = new TransactionService(repository, accounts, categories,
                 mock(UserClient.class), balances, events);
         var transaction = Transaction.builder().id(1L).version(2L).amount(BigDecimal.TEN).build();

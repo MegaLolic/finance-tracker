@@ -6,7 +6,7 @@ import org.portfolio.financeservice.dto.TransactionFilterDto;
 import org.portfolio.financeservice.entity.Account;
 import org.portfolio.financeservice.entity.Category;
 import org.portfolio.financeservice.entity.Transaction;
-import org.portfolio.financeservice.event.TransactionCreatedEvent;
+import org.portfolio.financeservice.event.OutboxService;
 import org.portfolio.financeservice.exception.ResourceNotFoundException;
 import org.portfolio.financeservice.repository.AccountRepository;
 import org.portfolio.financeservice.repository.CategoryRepository;
@@ -14,7 +14,6 @@ import org.portfolio.financeservice.repository.TransactionRepository;
 import org.portfolio.financeservice.repository.specification.TransactionSpecification;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +30,7 @@ public class TransactionService {
     private final CategoryRepository categoryRepository;
     private final UserClient userClient;
     private final AccountService accountService;
-    private final ApplicationEventPublisher eventPublisher; //publish inside Spring event,but not Kafka message
+    private final OutboxService outbox;
 
     public TransactionService(
             TransactionRepository transactionRepository,
@@ -39,14 +38,14 @@ public class TransactionService {
             CategoryRepository categoryRepository,
             UserClient userClient,
             AccountService accountService,
-            ApplicationEventPublisher eventPublisher) {
+            OutboxService outbox) {
 
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
         this.userClient = userClient;
         this.accountService = accountService;
-        this.eventPublisher = eventPublisher;
+        this.outbox = outbox;
     }
 
     @Transactional
@@ -84,18 +83,7 @@ public class TransactionService {
 
         transactionRepository.flush();
 
-        eventPublisher.publishEvent(
-                new TransactionCreatedEvent(
-                        saved.getId(),
-                        saved.getUserId(),
-                        saved.getAccountId(),
-                        saved.getCategoryId(),
-                        saved.getAmount(),
-                        saved.getDescription(),
-                        category.getType().name(),
-                        saved.getCreatedAt()
-                )
-        );
+        outbox.append("CREATED", saved, category.getType().name());
 
         return toDto(saved);
     }
@@ -177,7 +165,9 @@ public class TransactionService {
                 newBalanceChange
         );
 
-        return toDto(transactionRepository.saveAndFlush(updatedTransaction));
+        Transaction saved = transactionRepository.saveAndFlush(updatedTransaction);
+        outbox.append("UPDATED", saved, newCategory.getType().name());
+        return toDto(saved);
     }
 
     @Transactional
@@ -202,6 +192,7 @@ public class TransactionService {
                 getBalanceChange(transaction.getAmount(), category).negate()
         );
 
+        outbox.append("DELETED", transaction, category.getType().name());
         transactionRepository.delete(transaction);
     }
 

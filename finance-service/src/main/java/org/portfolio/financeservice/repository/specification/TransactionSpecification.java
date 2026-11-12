@@ -29,7 +29,7 @@ public class TransactionSpecification {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), filter.getFrom()));
             }
             if (filter.getTo() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), filter.getTo()));
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), filter.getTo()));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };

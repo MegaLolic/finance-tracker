@@ -6,6 +6,9 @@ import org.portfolio.financeservice.dto.AccountDto;
 import org.portfolio.financeservice.entity.Account;
 import org.portfolio.financeservice.exception.ResourceNotFoundException;
 import org.portfolio.financeservice.repository.AccountRepository;
+import org.portfolio.financeservice.repository.TransactionRepository;
+import org.portfolio.financeservice.repository.CategoryRepository;
+import org.portfolio.financeservice.event.OutboxService;
 import org.springframework.stereotype.Service;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,10 +21,17 @@ import java.util.Objects;
 public class AccountService {
     private final AccountRepository accountRepository;
     private final UserClient userClient;
+    private final TransactionRepository transactions;
+    private final CategoryRepository categories;
+    private final OutboxService outbox;
 
-    public AccountService(AccountRepository accountRepository, UserClient userClient) {
+    public AccountService(AccountRepository accountRepository, UserClient userClient,
+                          TransactionRepository transactions, CategoryRepository categories, OutboxService outbox) {
         this.accountRepository = accountRepository;
         this.userClient = userClient;
+        this.transactions = transactions;
+        this.categories = categories;
+        this.outbox = outbox;
     }
 
     public AccountDto createAccount(Long userId, AccountDto input){
@@ -69,13 +79,19 @@ public class AccountService {
     }
     @Transactional
     public void deleteAccount(Long id, Long userId, Long version) {
-        Account account = accountRepository.findByIdAndUserId(id, userId)
+        Account account = accountRepository.findForDeletion(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", id));
 
         if (!Objects.equals(version, account.getVersion())) {
             throw new ObjectOptimisticLockingFailureException(Account.class, id);
         }
 
+        // Lock the parent before listing children: no concurrent FK insert can escape the snapshot.
+        for (var transaction : transactions.findAllByAccountIdAndUserIdOrderById(id, userId)) {
+            var category = categories.findByIdAndUserId(transaction.getCategoryId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Category", transaction.getCategoryId()));
+            outbox.append("DELETED", transaction, category.getType().name());
+        }
         accountRepository.delete(account);
     }
 

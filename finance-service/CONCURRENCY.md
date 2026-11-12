@@ -19,15 +19,15 @@ A missing PUT/DELETE version returns HTTP 400. On conflict, reload the resource
 and review changes before retrying. There are no automatic retries. Conflicts
 roll back the entire financial operation, including its balance changes.
 
-Transaction-created events are delivered to Kafka only after the database
-transaction commits. Rollback/conflict does not produce an event. This is not a
-durable outbox: a crash or Kafka failure after commit can still lose the event;
-send failures are logged. Update/delete analytics events are a separate concern.
+Created, updated and deleted transaction snapshots are now stored in the
+transactional outbox in the same database transaction. Rollback/conflict removes
+the pending event as well. A separate publisher retries delivery to Kafka.
+See `KAFKA.md` for ordering, duplicate handling and operational limits.
 
 ## Verification
 
-Run `./mvnw test -Dtest=VersionApiTest,StaleVersionTest,TransactionEventProducerTest`
-for API validation, stale request checks, and commit/rollback event behavior.
+Run `./mvnw test -Dtest=VersionApiTest,StaleVersionTest`
+for API validation and stale request checks.
 To include real PostgreSQL persistence tests, set `FINANCE_TEST_DB_URL` to a
 dedicated test database JDBC URL (never production), optionally set
 `FINANCE_TEST_DB_USER` and `FINANCE_TEST_DB_PASSWORD`, and include

@@ -22,6 +22,10 @@ public class RawTransaction {
     @Id
     private Long id;
 
+    private Long version;
+    private String eventId;
+    private boolean deleted;
+
     private Long userId;
     private Long accountId;
     private Long categoryId;
