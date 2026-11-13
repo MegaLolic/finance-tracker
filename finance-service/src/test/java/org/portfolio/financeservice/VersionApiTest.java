@@ -32,6 +32,36 @@ class VersionApiTest {
     private TransactionService transactions;
     private MockMvc mvc;
 
+    @ParameterizedTest
+    @ValueSource(strings = {"accounts", "transactions"})
+    void excessiveMoneyPrecisionIsRejected(String resource) throws Exception {
+        String input = body(resource, "0")
+                .replace("\"balance\":100", "\"balance\":100.001")
+                .replace("\"amount\":10", "\"amount\":10.001");
+        mvc.perform(post("/finance/" + resource).contentType(MediaType.APPLICATION_JSON).content(input))
+                .andExpect(status().isBadRequest());
+        mvc.perform(put("/finance/" + resource + "/1").contentType(MediaType.APPLICATION_JSON).content(input))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(accounts, transactions);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"null", "100000000000000000"})
+    void missingOrOversizedBalanceIsRejected(String balance) throws Exception {
+        String input = body("accounts", "0").replace("\"balance\":100", "\"balance\":" + balance);
+        mvc.perform(post("/finance/accounts").contentType(MediaType.APPLICATION_JSON).content(input))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.balance").exists());
+        verifyNoInteractions(accounts, transactions);
+    }
+
+    @org.junit.jupiter.api.Test
+    void accountBusinessConflictReturns409() throws Exception {
+        when(accounts.updateAccount(eq(1L), eq(1L), any()))
+                .thenThrow(new org.portfolio.financeservice.exception.BusinessException("Account currency cannot be changed"));
+        mvc.perform(put("/finance/accounts/1").contentType(MediaType.APPLICATION_JSON).content(body("accounts", "0")))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.status").value(409));
+    }
+
     @BeforeEach
     void setup() {
         accounts = mock(AccountService.class);

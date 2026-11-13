@@ -5,6 +5,7 @@ import org.portfolio.financeservice.client.UserClient;
 import org.portfolio.financeservice.dto.AccountDto;
 import org.portfolio.financeservice.entity.Account;
 import org.portfolio.financeservice.exception.ResourceNotFoundException;
+import org.portfolio.financeservice.exception.BusinessException;
 import org.portfolio.financeservice.repository.AccountRepository;
 import org.portfolio.financeservice.repository.TransactionRepository;
 import org.portfolio.financeservice.repository.CategoryRepository;
@@ -71,9 +72,14 @@ public class AccountService {
             throw new ObjectOptimisticLockingFailureException(Account.class, id);
         }
 
+        if (updatedAccount.getBalance().compareTo(accountDto.getBalance()) != 0) {
+            throw new BusinessException("Account balance can only be changed through transactions");
+        }
+        if (updatedAccount.getCurrency() != accountDto.getCurrency()) {
+            throw new BusinessException("Account currency cannot be changed");
+        }
+
         updatedAccount.setName(accountDto.getName());
-        updatedAccount.setBalance(accountDto.getBalance());
-        updatedAccount.setCurrency(accountDto.getCurrency());
 
         return toDto(accountRepository.saveAndFlush(updatedAccount));// save through JPA(save) and sent changes in DB(flush)
     }

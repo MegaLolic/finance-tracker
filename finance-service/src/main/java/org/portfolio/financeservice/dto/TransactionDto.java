@@ -3,6 +3,7 @@ package org.portfolio.financeservice.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -33,6 +34,7 @@ public class TransactionDto {
     private Long categoryId;
     @NotNull(message = "Amount is required")
     @Positive(message = "Amount must be positive")
+    @Digits(integer = 17, fraction = 2, message = "Amount must have at most 17 integer digits and 2 decimal places")
     private BigDecimal amount;
     @Size(max = 500, message = "Description cannot exceed 500 characters")
     private String description;

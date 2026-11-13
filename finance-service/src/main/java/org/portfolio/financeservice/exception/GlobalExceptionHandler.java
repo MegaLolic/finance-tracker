@@ -31,8 +31,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ExceptionResponse> handleUserNotFound(BusinessException exception) {
-        HttpStatus status = HttpStatus.NOT_FOUND;
+    public ResponseEntity<ExceptionResponse> handleBusinessException(BusinessException exception) {
+        HttpStatus status = HttpStatus.CONFLICT;
 
         ExceptionResponse response = new ExceptionResponse(status.value(), exception.getMessage(), Map.of());
         return ResponseEntity.status(status).body(response);

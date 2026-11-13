@@ -1,9 +1,6 @@
 package org.portfolio.financeservice.dto;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -33,6 +30,8 @@ public class AccountDto {
     @Size(max = 50,message = "Name must contain at most 50 characters")
     private String name;
 
+    @NotNull(message = "Balance is required")
+    @Digits(integer = 17, fraction = 2, message = "Balance must have at most 17 integer digits and 2 decimal places")
     private BigDecimal balance;
     @NotNull(message = "Currency is required")
     private CurrencyEnum currency;
