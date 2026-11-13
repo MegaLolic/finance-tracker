@@ -19,9 +19,9 @@ import org.portfolio.financeservice.entity.CategoryEnum;
 @AllArgsConstructor
 public class CategoryDto {
     private Long id;
-    @NotNull(message = "User ID is required")
+    @NotNull(message = "Category name is required")
     @NotBlank(message = "Category name is required")
-    @Size(max = 50, message = "Category name cannot exceed 100 characters")
+    @Size(max = 50, message = "Category name cannot exceed 50 characters")
     private String name;
     @NotNull(message = "Category type is required")
     private CategoryEnum type;

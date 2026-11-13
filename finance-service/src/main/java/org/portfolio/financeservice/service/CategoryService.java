@@ -4,6 +4,7 @@ import org.portfolio.financeservice.client.UserClient;
 import org.portfolio.financeservice.dto.CategoryDto;
 import org.portfolio.financeservice.entity.Category;
 import org.portfolio.financeservice.exception.ResourceNotFoundException;
+import org.portfolio.financeservice.exception.BusinessException;
 import org.portfolio.financeservice.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
 
@@ -52,6 +53,10 @@ public class CategoryService {
         Category updatedCategory = categoryRepository
                 .findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
+
+        if (updatedCategory.getType() != categoryDto.getType()) {
+            throw new BusinessException("Category type cannot be changed");
+        }
 
         updatedCategory.setName(categoryDto.getName());
 

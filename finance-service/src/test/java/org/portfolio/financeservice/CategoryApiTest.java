@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.portfolio.financeservice.client.UserClient;
 import org.portfolio.financeservice.controller.CategoryController;
 import org.portfolio.financeservice.entity.Category;
+import org.portfolio.financeservice.entity.CategoryEnum;
 import org.portfolio.financeservice.exception.GlobalExceptionHandler;
 import org.portfolio.financeservice.repository.CategoryRepository;
 import org.portfolio.financeservice.service.CategoryService;
@@ -20,6 +21,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -67,7 +69,7 @@ class CategoryApiTest {
         when(categories.save(any(Category.class)))
                 .thenThrow(new DataIntegrityViolationException("idx_categories_user_name"));
         when(categories.findByIdAndUserId(1L, 7L))
-                .thenReturn(Optional.of(Category.builder().id(1L).userId(7L).build()));
+                .thenReturn(Optional.of(Category.builder().id(1L).userId(7L).type(CategoryEnum.EXPENSE).build()));
         String body = "{\"name\":\"Food\",\"type\":\"EXPENSE\"}";
 
         mvc.perform(post("/finance/categories").contentType(MediaType.APPLICATION_JSON).content(body))
@@ -92,5 +94,36 @@ class CategoryApiTest {
         mvc.perform(delete("/finance/categories/1")).andExpect(status().isNotFound());
         verify(categories, never()).delete(any(Category.class));
         verify(categories).findByIdAndUserId(1L, 7L);
+    }
+
+    @Test
+    void changingTypeReturnsConflictWithoutChangingNameOrSaving() throws Exception {
+        Category category = Category.builder().id(1L).userId(7L).name("Food")
+                .type(CategoryEnum.EXPENSE).build();
+        when(categories.findByIdAndUserId(1L, 7L)).thenReturn(Optional.of(category));
+
+        mvc.perform(put("/finance/categories/1").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Salary\",\"type\":\"INCOME\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Category type cannot be changed"));
+
+        assertEquals("Food", category.getName());
+        assertEquals(CategoryEnum.EXPENSE, category.getType());
+        verify(categories, never()).save(any(Category.class));
+    }
+
+    @Test
+    void renamingWithSameTypeSucceeds() throws Exception {
+        Category category = Category.builder().id(1L).userId(7L).name("Food")
+                .type(CategoryEnum.EXPENSE).build();
+        when(categories.findByIdAndUserId(1L, 7L)).thenReturn(Optional.of(category));
+
+        mvc.perform(put("/finance/categories/1").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Groceries\",\"type\":\"EXPENSE\"}"))
+                .andExpect(status().isOk());
+
+        assertEquals("Groceries", category.getName());
+        assertEquals(CategoryEnum.EXPENSE, category.getType());
+        verify(categories).save(category);
     }
 }
