@@ -52,7 +52,8 @@ public class JwtService {
     public boolean validateRefreshToken(String token) {
         try {
             Claims claims = parseToken(token);
-            return "refresh".equals(claims.get("type", String.class));
+            Long userId = claims.get("userId", Long.class);
+            return "refresh".equals(claims.get("type", String.class)) && userId != null && userId > 0;
         } catch (JwtException | IllegalArgumentException e) {
             log.error("Invalid refresh token", e);
             return false;
@@ -67,16 +68,14 @@ public class JwtService {
                 .getPayload();
     }
 
-    public JwtAuthenticationDto refreshBaseToken(String refreshToken){
+    public JwtAuthenticationDto refreshBaseToken(String refreshToken, Long userId, String email){
         JwtAuthenticationDto jwtDto=new JwtAuthenticationDto();
-        Long userId = getUserIdFromToken(refreshToken);
-        String email = getEmailFromToken(refreshToken);
         jwtDto.setToken(generateJwtToken(userId,email));
         jwtDto.setRefreshToken(refreshToken);
         return jwtDto;
     }
 
-    private Long getUserIdFromToken(String token) {
+    public Long getUserIdFromToken(String token) {
         Claims claims = parseToken(token);
         return claims.get("userId", Long.class);
     }

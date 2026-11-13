@@ -33,8 +33,9 @@ public class UserService {
     public JwtAuthenticationDto refreshToken(RefreshTokenDto refreshTokenDto) {
         String refreshToken=refreshTokenDto.getRefreshToken();
         if(refreshToken!=null && jwtService.validateRefreshToken(refreshToken)){
-            User user=findByEmail(jwtService.getEmailFromToken(refreshToken));
-            return jwtService.refreshBaseToken(refreshToken);
+            User user = userRepository.findById(jwtService.getUserIdFromToken(refreshToken))
+                    .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
+            return jwtService.refreshBaseToken(refreshToken, user.getId(), user.getEmail());
         }
         throw new BadCredentialsException("Invalid refresh token");
     }
@@ -89,9 +90,5 @@ public class UserService {
             }
         }
         throw new BadCredentialsException("Email or password is not correct");
-    }
-    private User findByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
     }
 }
