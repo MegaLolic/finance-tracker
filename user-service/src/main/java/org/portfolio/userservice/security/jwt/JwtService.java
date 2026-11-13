@@ -43,7 +43,7 @@ public class JwtService {
         try {
             Claims claims = parseToken(token);
             return "access".equals(claims.get("type", String.class));
-        } catch (JwtException e) {
+        } catch (JwtException | IllegalArgumentException e) {
             log.error("Invalid token", e);
             return false;
         }
@@ -53,7 +53,7 @@ public class JwtService {
         try {
             Claims claims = parseToken(token);
             return "refresh".equals(claims.get("type", String.class));
-        } catch (JwtException e) {
+        } catch (JwtException | IllegalArgumentException e) {
             log.error("Invalid refresh token", e);
             return false;
         }

@@ -4,12 +4,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.nio.file.AccessDeniedException;
+import org.springframework.security.access.AccessDeniedException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -43,9 +44,21 @@ public class GlobalExceptionHandler {
 
         HttpStatus status = HttpStatus.UNAUTHORIZED;
         ExceptionResponse response = new ExceptionResponse(status.value(),
-                "Authentication failed"+ exception.getMessage(), Map.of());
+                exception.getMessage(), Map.of());
 
         return ResponseEntity.status(status).body(response);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ExceptionResponse> handleDataConflict(DataIntegrityViolationException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ExceptionResponse(409, "User data conflicts with existing data", Map.of()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ExceptionResponse> handleInvalidBody(HttpMessageNotReadableException exception) {
+        return ResponseEntity.badRequest().body(
+                new ExceptionResponse(400, "Invalid request body", Map.of()));
     }
 
     @ExceptionHandler(Exception.class)

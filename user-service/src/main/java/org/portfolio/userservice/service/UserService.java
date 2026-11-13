@@ -8,7 +8,7 @@ import org.portfolio.userservice.security.jwt.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import javax.naming.AuthenticationException;
+import org.springframework.security.authentication.BadCredentialsException;
 import java.util.Optional;
 
 
@@ -25,18 +25,18 @@ public class UserService {
         this.jwtService = jwtService;
     }
 
-    public JwtAuthenticationDto signIn(UserCredentialsDto userCredentialsDto) throws AuthenticationException {
+    public JwtAuthenticationDto signIn(UserCredentialsDto userCredentialsDto) {
         User user=findUserByCredential(userCredentialsDto);
         return jwtService.generateAuthToken(user.getId(),user.getEmail());
     }
 
-    public JwtAuthenticationDto refreshToken(RefreshTokenDto refreshTokenDto) throws Exception {
+    public JwtAuthenticationDto refreshToken(RefreshTokenDto refreshTokenDto) {
         String refreshToken=refreshTokenDto.getRefreshToken();
         if(refreshToken!=null && jwtService.validateRefreshToken(refreshToken)){
             User user=findByEmail(jwtService.getEmailFromToken(refreshToken));
             return jwtService.refreshBaseToken(refreshToken);
         }
-        throw new AuthenticationException("Invalid refresh token");
+        throw new BadCredentialsException("Invalid refresh token");
     }
 
     public UserDto createUser(RegisterRequestDto input) {
@@ -80,7 +80,7 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    public User findUserByCredential(UserCredentialsDto userCredentialsDto) throws AuthenticationException {
+    public User findUserByCredential(UserCredentialsDto userCredentialsDto) {
         Optional<User> optionalUser =userRepository.findByEmail(userCredentialsDto.getEmail());
         if(optionalUser.isPresent()){
             User user=optionalUser.get();
@@ -88,9 +88,10 @@ public class UserService {
                 return user;
             }
         }
-        throw new AuthenticationException("Email or password is not correct");
+        throw new BadCredentialsException("Email or password is not correct");
     }
-    private User findByEmail(String email) throws Exception{
-        return userRepository.findByEmail(email).orElseThrow(()->new Exception(String.format("User with email %s not found", email)));
+    private User findByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
     }
 }
