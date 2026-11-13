@@ -1,6 +1,7 @@
 package org.portfolio.userservice.controller;
 
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import org.portfolio.userservice.dto.RegisterRequestDto;
 import org.portfolio.userservice.dto.UserDto;
 import org.portfolio.userservice.service.UserService;
@@ -22,6 +23,7 @@ public class UserController {
     }
 
     @PostMapping("/registration")
+    @SecurityRequirements
     public ResponseEntity<UserDto> createUser(@Valid @RequestBody RegisterRequestDto userDto) {
         UserDto created = userService.createUser(userDto);
         return new ResponseEntity<>(created, HttpStatus.CREATED);
