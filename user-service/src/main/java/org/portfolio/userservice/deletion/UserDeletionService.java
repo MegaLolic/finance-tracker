@@ -33,7 +33,7 @@ public class UserDeletionService {
 
     @Transactional
     public void acknowledge(UserDeletionEvent event) {
-        if (!"finance".equals(event.service()) && !"analytics".equals(event.service())) {
+        if (event == null || (!"finance".equals(event.service()) && !"analytics".equals(event.service()))) {
             throw new IllegalArgumentException("Unknown deletion participant");
         }
         // Always lock users before requests, matching request() and avoiding an inverted lock order.

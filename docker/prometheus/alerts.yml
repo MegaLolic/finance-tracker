@@ -1,0 +1,16 @@
+groups:
+  - name: finance-assistance
+    rules:
+      - alert: ApplicationUnavailable
+        expr: up{job=~"user-service|finance-service|analytical-service|api-gateway"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} is unavailable"
+      - alert: DeadLetterRecords
+        expr: increase(kafka_dead_letter_records_total[10m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.application }} quarantined Kafka records; inspect its DLT"

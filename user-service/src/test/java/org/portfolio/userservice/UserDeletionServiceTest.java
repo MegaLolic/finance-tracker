@@ -13,6 +13,13 @@ import static org.mockito.Mockito.*;
 
 class UserDeletionServiceTest {
     @Test
+    void nullAcknowledgementCannotReachDatabase() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        assertThrows(IllegalArgumentException.class, () -> new UserDeletionService(jdbc).acknowledge(null));
+        verifyNoInteractions(jdbc);
+    }
+
+    @Test
     void partialAcknowledgementDoesNotRemoveUser() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         var service = new UserDeletionService(jdbc);

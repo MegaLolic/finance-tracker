@@ -1,5 +1,6 @@
 package org.portfolio.analyticalservice.event;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -56,7 +57,8 @@ class KafkaRecoveryIntegrationTest {
             processed.countDown();
         });
         var container = new KafkaMessageListenerContainer<>(consumers, containerProperties);
-        container.setCommonErrorHandler(new KafkaErrorConfig().kafkaErrorHandler(template, 10, 2));
+        var metrics = new SimpleMeterRegistry();
+        container.setCommonErrorHandler(new KafkaErrorConfig().kafkaErrorHandler(template, metrics, 10, 2));
         try (var admin = AdminClient.create(Map.of("bootstrap.servers", broker));
              var deadLetters = new KafkaConsumer<>(config, new StringDeserializer(), new ByteArrayDeserializer())) {
             admin.createTopics(List.of(new NewTopic(source, 1, (short) 1), new NewTopic(dlt, 1, (short) 1)))
@@ -78,6 +80,7 @@ class KafkaRecoveryIntegrationTest {
             String rejected = new String(records.get(1).value(), StandardCharsets.UTF_8);
             assertTrue(rejected.contains("\"description\":\"reject\""));
             assertNotNull(records.get(0).headers().lastHeader("kafka_dlt-original-topic"));
+            assertEquals(2, metrics.get("kafka.dead.letter.records").counter().count());
         } finally {
             container.stop();
             template.destroy();

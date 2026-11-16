@@ -19,6 +19,12 @@ public class UserDeletionListener {
             properties = {"value.deserializer=org.apache.kafka.common.serialization.StringDeserializer"})
     public void delete(String json) throws Exception {
         var request = mapper.readValue(json, UserDeletionEvent.class);
+        if (request == null) {
+            throw new IllegalArgumentException("Deletion request is required");
+        }
+        if (request.service() != null) {
+            throw new IllegalArgumentException("Deletion request must not name a participant");
+        }
         deletions.delete(request.userId());
         var completed = new UserDeletionEvent(request.requestId(), request.userId(), "finance");
         kafka.send("user-deletion-completed", request.userId().toString(), mapper.writeValueAsString(completed))

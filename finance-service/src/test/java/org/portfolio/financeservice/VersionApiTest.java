@@ -32,6 +32,23 @@ class VersionApiTest {
     private TransactionService transactions;
     private MockMvc mvc;
 
+    @org.junit.jupiter.api.Test
+    void unsupportedMethodKeeps405AndAllowHeader() throws Exception {
+        mvc.perform(patch("/finance/accounts").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(header().exists("Allow"))
+                .andExpect(jsonPath("$.status").value(405));
+        verifyNoInteractions(accounts, transactions);
+    }
+
+    @org.junit.jupiter.api.Test
+    void unsupportedContentTypeKeeps415() throws Exception {
+        mvc.perform(post("/finance/accounts").contentType(MediaType.TEXT_PLAIN).content("hello"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415));
+        verifyNoInteractions(accounts, transactions);
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"/finance/accounts/abc", "/finance/transactions/abc"})
     void invalidPathIdReturns400(String path) throws Exception {

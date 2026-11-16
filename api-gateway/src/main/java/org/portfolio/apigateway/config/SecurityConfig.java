@@ -64,6 +64,7 @@ public class SecurityConfig {
                                 "/auth/refresh",
                                 "/users/registration",
                                 "/actuator/health",
+                                "/actuator/prometheus",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/docs/**",

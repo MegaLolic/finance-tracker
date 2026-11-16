@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: user_db
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
       - db-data:/var/lib/postgresql/data
@@ -19,7 +19,7 @@ services:
     container_name: finance-kafka
     restart: always
     ports:
-      - "9092:9092"
+      - "127.0.0.1:9092:9092"
     volumes:
       - kafka-data:/tmp/kafka-logs
     environment:
@@ -40,7 +40,7 @@ services:
     container_name: kafka-ui-in-Fin
     image: ghcr.io/kafbat/kafka-ui:latest
     ports:
-      - "8070:8080"
+      - "127.0.0.1:8070:8080"
     depends_on:
       - kafka
     environment:
@@ -54,9 +54,10 @@ services:
     image: prom/prometheus:v3.1.0
     container_name: prometheusInFin
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.retention.time=5d
@@ -69,7 +70,7 @@ services:
     image: grafana/grafana:11.4.0
     container_name: grafanaInFin
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?Set GRAFANA_ADMIN_USER in .env}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
@@ -85,8 +86,9 @@ services:
   mongodb:
     image: mongo:7
     container_name: mongodb
+    restart: unless-stopped
     ports:
-       - "27017:27017"
+       - "127.0.0.1:27017:27017"
     environment:
       MONGO_INITDB_DATABASE: analytical_db
     volumes:
@@ -97,7 +99,7 @@ services:
     image: mongo-express:latest
     container_name: mongo-express
     ports:
-      - "8088:8081"
+      - "127.0.0.1:8088:8081"
     environment:
       ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017/
       ME_CONFIG_BASICAUTH: false

@@ -20,12 +20,43 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.mockito.ArgumentMatchers.argThat;
 
 class AuthErrorApiTest {
     private UserService service;
     private MockMvc mvc;
     private org.portfolio.userservice.deletion.UserDeletionService deletions;
+
+    @Test
+    void unsupportedMethodPreserves405AndAllowHeader() throws Exception {
+        mvc.perform(patch("/users/7")).andExpect(status().isMethodNotAllowed())
+                .andExpect(header().exists("Allow"));
+        verifyNoInteractions(service, deletions);
+    }
+
+    @Test
+    void unsupportedBodyTypeReturns415() throws Exception {
+        mvc.perform(post("/users/registration").contentType(MediaType.TEXT_PLAIN).content("hello"))
+                .andExpect(status().isUnsupportedMediaType());
+        verifyNoInteractions(service, deletions);
+    }
+
+    @Test
+    void longRegistrationNamesReturn400BeforePersistence() throws Exception {
+        mvc.perform(post("/users/registration").contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationBody("password123").replace("\"Test\"", "\"" + "a".repeat(101) + "\"")))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.name").exists());
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void unknownResourceKeeps404() {
+        var response = new GlobalExceptionHandler().handleException(
+                new org.springframework.web.servlet.resource.NoResourceFoundException(
+                        org.springframework.http.HttpMethod.GET, "/unknown", "No resource found"));
+        org.junit.jupiter.api.Assertions.assertEquals(404, response.getStatusCode().value());
+    }
 
     @Test
     void selfDeletionReturnsAcceptedAndQueuesRequest() throws Exception {

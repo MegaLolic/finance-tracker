@@ -4,6 +4,12 @@
   <groupId>org.portfolio</groupId>
   <artifactId>finance-assistance</artifactId>
   <version>1.0-SNAPSHOT</version>
-  <name>Archetype - finance-assistance</name>
-  <url>http://maven.apache.org</url>
+  <packaging>pom</packaging>
+  <name>Finance Assistance</name>
+  <modules>
+    <module>user-service</module>
+    <module>finance-service</module>
+    <module>analytical-service</module>
+    <module>api-gateway</module>
+  </modules>
 </project>

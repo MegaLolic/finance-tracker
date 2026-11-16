@@ -81,7 +81,7 @@ class TransactionEventListenerTest {
     @Test
     void concurrentOutOfOrderEventsKeepTheHighestVersion() throws Exception {
         // Pre-create the ID to focus on atomic version comparison, not initial upsert collisions.
-        listener.onTransactionEvent(event("CREATED", 0, "0"));
+        listener.onTransactionEvent(event("CREATED", 0, "1"));
         try (var executor = Executors.newFixedThreadPool(4)) {
             var futures = IntStream.rangeClosed(1, 15).mapToObj(version ->
                     executor.submit(() -> listener.onTransactionEvent(event("UPDATED", version, "" + version)))).toList();

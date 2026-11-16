@@ -3,6 +3,7 @@ package org.portfolio.apigateway.route;
 
 import org.springframework.cloud.gateway.server.mvc.handler.GatewayRouterFunctions;
 import org.springframework.context.annotation.Bean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.function.RequestPredicates;
 import org.springframework.web.servlet.function.RouterFunction;
@@ -16,18 +17,18 @@ import static org.springframework.cloud.gateway.server.mvc.handler.HandlerFuncti
 @Configuration
 public class FinanceServiceRoutes {
     @Bean
-    public RouterFunction<ServerResponse> financeRoute(){
+    public RouterFunction<ServerResponse> financeRoute(@Value("${services.finance.url}") String serviceUrl){
         return route("finance-service")
                 .route(RequestPredicates.path("/finance/**"),http())
-                .before(uri("http://localhost:8081"))
+                .before(uri(serviceUrl))
                 .build();
     }
 
     @Bean
-    public RouterFunction<ServerResponse> financeServiceApiDocs(){
+    public RouterFunction<ServerResponse> financeServiceApiDocs(@Value("${services.finance.url}") String serviceUrl){
         return GatewayRouterFunctions.route("finance-service-api-docs")
                 .route(RequestPredicates.path("/docs/finance-service/api-docs"),http())
-                .before(uri("http://localhost:8081"))
+                .before(uri(serviceUrl))
                 .filter(setPath("/v3/api-docs"))
                 .build();
     }

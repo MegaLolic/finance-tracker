@@ -21,6 +21,9 @@ public class UserDeletionListener {
             properties = {"value.deserializer=org.apache.kafka.common.serialization.StringDeserializer"})
     public void delete(String json) throws Exception {
         var request = mapper.readValue(json, UserDeletionEvent.class);
+        if (request == null || request.service() != null) {
+            throw new IllegalArgumentException("A deletion request without a participant is required");
+        }
         // Persist the tombstone BEFORE removing documents. Retried and late events cannot restore them.
         mongo.getCollection("deleted_users").replaceOne(new Document("_id", request.userId()),
                 new Document("_id", request.userId()), new com.mongodb.client.model.ReplaceOptions().upsert(true));

@@ -70,7 +70,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ExceptionResponse> handleException(Exception exception) {
-
+        if (exception instanceof org.springframework.web.ErrorResponse error) {
+            HttpStatus status = HttpStatus.resolve(error.getStatusCode().value());
+            return ResponseEntity.status(error.getStatusCode()).headers(error.getHeaders()).body(
+                    new ExceptionResponse(error.getStatusCode().value(),
+                            status == null ? "Request failed" : status.getReasonPhrase(), Map.of()));
+        }
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         ExceptionResponse response = new ExceptionResponse(status.value(), "Internal server error", Map.of());
 

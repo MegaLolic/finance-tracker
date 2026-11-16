@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.ErrorResponse;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,6 +17,12 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(UserServiceException.class)
+    public ResponseEntity<ExceptionResponse> handleUserService(UserServiceException exception) {
+        return ResponseEntity.status(exception.getStatus()).body(new ExceptionResponse(
+                exception.getStatus().value(), exception.getMessage(), Map.of()));
+    }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ExceptionResponse> handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
@@ -82,6 +89,13 @@ public class GlobalExceptionHandler {
     }
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ExceptionResponse> handleException(Exception exception) {
+
+        if (exception instanceof ErrorResponse error) {
+            HttpStatus status = HttpStatus.resolve(error.getStatusCode().value());
+            return ResponseEntity.status(error.getStatusCode()).headers(error.getHeaders()).body(
+                    new ExceptionResponse(error.getStatusCode().value(),
+                            status == null ? "Request failed" : status.getReasonPhrase(), Map.of()));
+        }
 
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
 

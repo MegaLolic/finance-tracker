@@ -20,6 +20,18 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class UserDeletionTest {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"null", "{\"requestId\":\"b935c238-0762-4cb0-a35a-9b037d586e05\",\"userId\":2,\"service\":\"analytics\"}"})
+    @SuppressWarnings("unchecked")
+    void invalidRequestIsRejectedBeforeCleanup(String json) {
+        var mongo = mock(MongoTemplate.class);
+        KafkaTemplate<String, String> kafka = mock(KafkaTemplate.class);
+        var listener = new UserDeletionListener(mongo, new JsonMapper(), kafka);
+
+        assertThrows(IllegalArgumentException.class, () -> listener.delete(json));
+        verifyNoInteractions(mongo, kafka);
+    }
+
     @Test
     @SuppressWarnings("unchecked")
     void lateTransactionIsIgnoredAfterUserTombstone() {

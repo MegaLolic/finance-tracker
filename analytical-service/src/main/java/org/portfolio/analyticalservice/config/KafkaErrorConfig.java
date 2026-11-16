@@ -1,5 +1,6 @@
 package org.portfolio.analyticalservice.config;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.listener.DefaultErrorHandler;
@@ -13,7 +14,7 @@ import java.util.Map;
 @Configuration
 public class KafkaErrorConfig {
     @Bean
-    public DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<?, ?> kafka,
+    public DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<?, ?> kafka, MeterRegistry metrics,
             @Value("${analytics.kafka.retry-delay-ms:1000}") long delayMs,
             @Value("${analytics.kafka.retry-attempts:3}") long retries) {
         if (delayMs < 1 || retries < 0) {
@@ -23,7 +24,11 @@ public class KafkaErrorConfig {
                 (record, error) -> new TopicPartition(record.topic() + ".analytics.DLT", -1));
         // Never advance past the original record unless the broker accepted its DLT copy.
         recoverer.setFailIfSendResultIsError(true);
-        DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, new FixedBackOff(delayMs, retries));
+        var quarantined = metrics.counter("kafka.dead.letter.records");
+        DefaultErrorHandler handler = new DefaultErrorHandler((record, error) -> {
+            recoverer.accept(record, error);
+            quarantined.increment();
+        }, new FixedBackOff(delayMs, retries));
         // Apply the same bounded policy to malformed JSON and listener failures.
         handler.setClassifications(Map.of(Exception.class, true), true);
         return handler;

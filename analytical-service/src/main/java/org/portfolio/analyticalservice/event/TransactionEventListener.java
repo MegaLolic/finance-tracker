@@ -20,6 +20,7 @@ public class TransactionEventListener {
     private static final long LEGACY_EVENT_VERSION = -1L;
     private static final long UNVERSIONED_DOCUMENT = -2L;
     private static final Set<String> EVENT_TYPES = Set.of("CREATED", "UPDATED", "DELETED");
+    private static final Set<String> CATEGORY_TYPES = Set.of("INCOME", "EXPENSE");
 
     private final MongoTemplate mongo;
 
@@ -43,6 +44,7 @@ public class TransactionEventListener {
     }
 
     private RawTransaction toState(TransactionEvent event) {
+        validatePayload(event);
         String type = event.eventType();
         long version;
         if (isLegacyEvent(event)) {
@@ -52,8 +54,8 @@ public class TransactionEventListener {
             version = requireVersion(event);
         }
 
-        if (event.transactionId() == null || type == null || !EVENT_TYPES.contains(type)) {
-            throw new IllegalArgumentException("Invalid transaction event: " + event);
+        if (type == null || !EVENT_TYPES.contains(type)) {
+            throw new IllegalArgumentException("Transaction event type must be CREATED, UPDATED or DELETED");
         }
 
         String eventId = null;
@@ -74,6 +76,29 @@ public class TransactionEventListener {
                 .amount(event.amount())
                 .createdAt(event.createdAt())
                 .build();
+    }
+
+    private void validatePayload(TransactionEvent event) {
+        if (event == null || !positive(event.transactionId()) || !positive(event.userId())
+                || !positive(event.accountId()) || !positive(event.categoryId())) {
+            throw new IllegalArgumentException("Positive transaction, user, account and category IDs are required");
+        }
+        var amount = event.amount();
+        if (amount == null || amount.signum() <= 0 || amount.scale() > 2
+                || amount.precision() - amount.scale() > 17) {
+            throw new IllegalArgumentException("Amount must be positive with at most 17 integer digits and 2 decimal places");
+        }
+        if (event.categoryType() == null || !CATEGORY_TYPES.contains(event.categoryType())
+                || event.createdAt() == null) {
+            throw new IllegalArgumentException("Valid category type and creation time are required");
+        }
+        if (event.description() != null && event.description().length() > 500) {
+            throw new IllegalArgumentException("Description must not exceed 500 characters");
+        }
+    }
+
+    private boolean positive(Long id) {
+        return id != null && id > 0;
     }
 
     private UpdateResult saveIfNewer(RawTransaction state) {
