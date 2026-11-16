@@ -25,6 +25,40 @@ import static org.mockito.ArgumentMatchers.argThat;
 class AuthErrorApiTest {
     private UserService service;
     private MockMvc mvc;
+    private org.portfolio.userservice.deletion.UserDeletionService deletions;
+
+    @Test
+    void selfDeletionReturnsAcceptedAndQueuesRequest() throws Exception {
+        var principal = org.springframework.security.oauth2.jwt.Jwt.withTokenValue("test")
+                .header("alg", "none").claim("userId", 7L).build();
+        var authenticatedMvc = MockMvcBuilders.standaloneSetup(new UserController(service, deletions))
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(new org.springframework.web.method.support.HandlerMethodArgumentResolver() {
+                    @Override
+                    public boolean supportsParameter(org.springframework.core.MethodParameter parameter) {
+                        return parameter.getParameterType() == org.springframework.security.oauth2.jwt.Jwt.class;
+                    }
+
+                    @Override
+                    public Object resolveArgument(org.springframework.core.MethodParameter parameter,
+                            org.springframework.web.method.support.ModelAndViewContainer container,
+                            org.springframework.web.context.request.NativeWebRequest request,
+                            org.springframework.web.bind.support.WebDataBinderFactory binder) {
+                        return principal;
+                    }
+                }).build();
+        authenticatedMvc.perform(delete("/users/7")).andExpect(status().isAccepted());
+        verify(deletions).request(7L);
+        authenticatedMvc.perform(delete("/users/8")).andExpect(status().isForbidden());
+        verifyNoMoreInteractions(deletions);
+    }
+
+    @Test
+    void invalidUserIdReturns400() throws Exception {
+        mvc.perform(get("/users/abc"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.id").exists());
+        verifyNoInteractions(service);
+    }
 
     @ParameterizedTest
     @ValueSource(strings = {"a", "я", "😀"})
@@ -75,7 +109,9 @@ class AuthErrorApiTest {
     @BeforeEach
     void setUp() {
         service = mock(UserService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new AuthController(service), new UserController(service), new DeniedController())
+        deletions = mock(org.portfolio.userservice.deletion.UserDeletionService.class);
+        mvc = MockMvcBuilders.standaloneSetup(new AuthController(service),
+                        new UserController(service, deletions), new DeniedController())
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
 

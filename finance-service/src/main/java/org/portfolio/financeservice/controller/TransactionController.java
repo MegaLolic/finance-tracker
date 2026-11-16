@@ -38,7 +38,7 @@ public class TransactionController {
 
     @GetMapping("/search")
     public ResponseEntity<List<TransactionDto>> getTransactions(
-            @ModelAttribute TransactionFilterDto filter,
+            @Valid @ModelAttribute TransactionFilterDto filter,
             @AuthenticationPrincipal Jwt jwt) {
 
         Long userId = jwt.getClaim("userId");

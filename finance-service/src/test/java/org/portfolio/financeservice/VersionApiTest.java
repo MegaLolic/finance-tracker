@@ -33,6 +33,44 @@ class VersionApiTest {
     private MockMvc mvc;
 
     @ParameterizedTest
+    @ValueSource(strings = {"/finance/accounts/abc", "/finance/transactions/abc"})
+    void invalidPathIdReturns400(String path) throws Exception {
+        mvc.perform(get(path)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.id").exists());
+        verifyNoInteractions(accounts, transactions);
+    }
+
+    @org.junit.jupiter.api.Test
+    void invalidVersionReturns400() throws Exception {
+        mvc.perform(delete("/finance/accounts/1").param("version", "abc"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.version").exists());
+        verifyNoInteractions(accounts, transactions);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"accountId=-1", "categoryId=0", "from=invalid",
+            "from=2099-01-01T00:00:00Z", "from=2020-02-01T00:00:00Z&to=2020-01-01T00:00:00Z"})
+    void invalidSearchFilterReturns400(String query) throws Exception {
+        mvc.perform(get("/finance/transactions/search?" + query)).andExpect(status().isBadRequest());
+        verifyNoInteractions(accounts, transactions);
+    }
+
+    @org.junit.jupiter.api.Test
+    void searchUsesJwtUserIdInsteadOfClientInput() throws Exception {
+        when(transactions.getTransactions(any())).thenReturn(java.util.List.of());
+        mvc.perform(get("/finance/transactions/search").param("userId", "999"))
+                .andExpect(status().isOk());
+        verify(transactions).getTransactions(argThat(filter -> filter.getUserId().equals(1L)));
+    }
+
+    @org.junit.jupiter.api.Test
+    void searchDoesNotRequireUserIdParameter() throws Exception {
+        when(transactions.getTransactions(any())).thenReturn(java.util.List.of());
+        mvc.perform(get("/finance/transactions/search")).andExpect(status().isOk());
+        verify(transactions).getTransactions(argThat(filter -> filter.getUserId().equals(1L)));
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"accounts", "transactions"})
     void excessiveMoneyPrecisionIsRejected(String resource) throws Exception {
         String input = body(resource, "0")
