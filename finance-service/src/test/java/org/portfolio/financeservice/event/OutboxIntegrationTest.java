@@ -180,6 +180,32 @@ class OutboxIntegrationTest {
     }
 
     @Test
+    void cleanupOnlyRemovesExpiredPublishedEventsInBoundedBatches() {
+        create("10");
+        create("20");
+        create("30");
+        create("40");
+        jdbc.update("""
+                UPDATE outbox_events SET published_at = CASE
+                    WHEN sequence IN (SELECT sequence FROM outbox_events ORDER BY sequence LIMIT 2)
+                    THEN CURRENT_TIMESTAMP - INTERVAL '8 days'
+                    ELSE CURRENT_TIMESTAMP END
+                """);
+        jdbc.update("""
+                UPDATE outbox_events SET published_at = NULL, created_at = CURRENT_TIMESTAMP - INTERVAL '30 days'
+                WHERE sequence = (SELECT max(sequence) FROM outbox_events)
+                """);
+        var cleanup = new OutboxCleanup(jdbc, 7, 1);
+        cleanup.cleanPublished();
+        assertEquals(3, jdbc.queryForObject("SELECT count(*) FROM outbox_events", Integer.class));
+        cleanup.cleanPublished();
+        cleanup.cleanPublished();
+        assertEquals(2, jdbc.queryForObject("SELECT count(*) FROM outbox_events", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM outbox_events WHERE published_at IS NULL", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM outbox_events WHERE published_at IS NOT NULL", Integer.class));
+    }
+
+    @Test
     void twoRelaysDoNotSendTheSamePendingBatchConcurrently() throws Exception {
         create("10");
         var entered = new CountDownLatch(1);

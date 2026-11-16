@@ -73,7 +73,7 @@ while an old operation is in flight. Future analytics reads must exclude tombsto
 - Kafka topics are trusted internal channels in the current project. Broker authentication
   and network isolation remain deployment tasks; do not expose deletion topics to clients.
 - This deletes application database records and pending finance outbox payloads. It does
-  not selectively erase historical Kafka messages, logs or backups. Their retention is a
+  not selectively erase historical Kafka messages (including analytics DLTs), logs or backups. Their retention is a
   separate policy. Existing transactions in Kafka can contain personal descriptions.
 - Do not remove tombstones as routine housekeeping or reuse deleted user IDs.
 
@@ -81,8 +81,15 @@ while an old operation is in flight. Future analytics reads must exclude tombsto
 
 Unit/API tests cover 202/ownership, sign-in and refresh rejection, partial/final
 acknowledgements, AOP protection of financial repositories, late analytics events,
-repeated cleanup, and no acknowledgement on MongoDB failure. Real PostgreSQL lock behavior
-and the complete Kafka/PostgreSQL/MongoDB sequence still require an integration run.
+repeated cleanup, and no acknowledgement on MongoDB failure. A local isolated run
+against Docker PostgreSQL/Kafka/MongoDB verified creation, event delivery, 202,
+both acknowledgements, SQL/Mongo cleanup, finance access rejection, analytics
+restart recovery and rejection of a late transaction event. This does not replace
+load testing of all concurrent-write/crash interleavings.
+
+Analytics retries are bounded and unsuccessful records go to a DLT (see
+`finance-service/KAFKA.md`). A quarantined deletion request is not acknowledged;
+the durable relay continues resending it. No automatic DLT replay is performed.
 
 For a manual integration check, use a disposable user: create a category, account and
 transaction; request deletion; wait for both completion flags; verify all three stores.
