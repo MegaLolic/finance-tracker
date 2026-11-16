@@ -58,11 +58,6 @@ public class AccountService {
                 .currency(account.getCurrency())
                 .build();
     }
-    public AccountDto getAccountById(Long id){
-        return accountRepository.findById(id)
-                .map(this::toDto)
-                .orElseThrow(()->new ResourceNotFoundException("Account",id));
-    }
     @Transactional
     public AccountDto updateAccount(Long id, Long userId, AccountDto accountDto) {
         Account updatedAccount = accountRepository.findByIdAndUserId(id, userId)

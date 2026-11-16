@@ -33,7 +33,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
+    public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret,
+            org.portfolio.userservice.repository.UserRepository users) {
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
 
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key)
@@ -46,9 +47,17 @@ public class SecurityConfig {
                         : OAuth2TokenValidatorResult.failure(
                         new OAuth2Error("invalid_token", "Token is not an access token", null));
 
+        OAuth2TokenValidator<Jwt> activeUserValidator = jwt -> {
+            Object claim = jwt.getClaim("userId");
+            return claim instanceof Number id && id.longValue() > 0 && users.existsByIdAndDeletingFalse(id.longValue())
+                    ? OAuth2TokenValidatorResult.success()
+                    : OAuth2TokenValidatorResult.failure(
+                            new OAuth2Error("invalid_token", "User is unavailable", null));
+        };
+
         decoder.setJwtValidator(new org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefault(),
-                accessTokenValidator
+                accessTokenValidator, activeUserValidator
         ));
 
         return decoder;

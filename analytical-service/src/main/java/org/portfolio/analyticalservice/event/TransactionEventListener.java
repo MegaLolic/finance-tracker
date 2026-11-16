@@ -28,7 +28,15 @@ public class TransactionEventListener {
         log.info("Received event: {}", event);
 
         RawTransaction state = toState(event);
+        if (isUserDeleted(state.getUserId())) {
+            return;
+        }
         UpdateResult result = saveIfNewer(state);
+
+        // Close the race with deletion between the initial check and the upsert.
+        if (isUserDeleted(state.getUserId())) {
+            mongo.getCollection("raw_transactions").deleteMany(new Document("userId", state.getUserId()));
+        }
 
         log.info("Applied event {}: transaction={}, version={}, modified={}, inserted={}",
                 event.eventId(), state.getId(), state.getVersion(), result.getModifiedCount(), result.getUpsertedId());
@@ -76,6 +84,10 @@ public class TransactionEventListener {
         UpdateOptions options = new UpdateOptions().upsert(true);
         return mongo.getCollection("raw_transactions")
                 .updateOne(Filters.eq("_id", state.getId()), update, options);
+    }
+
+    private boolean isUserDeleted(Long userId) {
+        return mongo.getCollection("deleted_users").find(new Document("_id", userId)).first() != null;
     }
 
     private Document replaceIfNewer(Document replacement, long incomingVersion) {

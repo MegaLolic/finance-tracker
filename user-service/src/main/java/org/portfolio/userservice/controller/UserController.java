@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import org.portfolio.userservice.dto.RegisterRequestDto;
 import org.portfolio.userservice.dto.UserDto;
 import org.portfolio.userservice.service.UserService;
+import org.portfolio.userservice.deletion.UserDeletionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,9 +18,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/users")
 public class UserController {
     private final UserService userService;
+    private final UserDeletionService deletions;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, UserDeletionService deletions) {
         this.userService = userService;
+        this.deletions = deletions;
     }
 
     @PostMapping("/registration")
@@ -69,7 +72,7 @@ public class UserController {
             throw new AccessDeniedException("You don't have permission to delete this user");
         }
 
-        userService.deleteUser(id);
-        return ResponseEntity.noContent().build();
+        deletions.request(id);
+        return ResponseEntity.accepted().build();
     }
 }

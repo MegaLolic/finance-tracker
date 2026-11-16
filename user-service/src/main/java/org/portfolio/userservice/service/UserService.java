@@ -34,6 +34,7 @@ public class UserService {
         String refreshToken=refreshTokenDto.getRefreshToken();
         if(refreshToken!=null && jwtService.validateRefreshToken(refreshToken)){
             User user = userRepository.findById(jwtService.getUserIdFromToken(refreshToken))
+                    .filter(candidate -> !candidate.isDeleting())
                     .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
             return jwtService.refreshBaseToken(refreshToken, user.getId(), user.getEmail());
         }
@@ -62,12 +63,15 @@ public class UserService {
 
     public UserDto getUserById(Long id) {
         return userRepository.findById(id)
+                .filter(user -> !user.isDeleting())
                 .map(this::toDto)
                 .orElseThrow(() -> new UserNotFoundException(id));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void updateUser(Long id, UserDto userDto) {
-        User user = userRepository.findById(id).orElseThrow(() -> new UserNotFoundException(id));
+        User user = userRepository.findForUpdate(id).filter(candidate -> !candidate.isDeleting())
+                .orElseThrow(() -> new UserNotFoundException(id));
 
         user.setName(userDto.getName());
         user.setSurname(userDto.getSurname());
@@ -76,16 +80,11 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public void deleteUser(Long id) {
-        User user = userRepository.findById(id).orElseThrow(() -> new UserNotFoundException(id));
-        userRepository.delete(user);
-    }
-
     public User findUserByCredential(UserCredentialsDto userCredentialsDto) {
         Optional<User> optionalUser =userRepository.findByEmail(userCredentialsDto.getEmail());
         if(optionalUser.isPresent()){
             User user=optionalUser.get();
-            if(passwordEncoder.matches(userCredentialsDto.getPassword(),user.getPassword())) { //comparing writing password with db password
+            if(!user.isDeleting() && passwordEncoder.matches(userCredentialsDto.getPassword(),user.getPassword())) {
                 return user;
             }
         }

@@ -20,6 +20,20 @@ class AuthServiceTest {
     private final UserService service = new UserService(users, mock(PasswordEncoder.class), jwt);
 
     @Test
+    void deletingUserCannotSignInOrRefresh() {
+        User deleting = User.builder().id(1L).email("deleting@example.com").deleting(true).build();
+        when(users.findByEmail(deleting.getEmail())).thenReturn(Optional.of(deleting));
+        when(users.findById(1L)).thenReturn(Optional.of(deleting));
+        UserCredentialsDto credentials = new UserCredentialsDto();
+        credentials.setEmail(deleting.getEmail());
+        credentials.setPassword("password123");
+        assertThrows(BadCredentialsException.class, () -> service.signIn(credentials));
+        RefreshTokenDto refresh = new RefreshTokenDto();
+        refresh.setRefreshToken(jwt.generateAuthToken(1L, deleting.getEmail()).getRefreshToken());
+        assertThrows(BadCredentialsException.class, () -> service.refreshToken(refresh));
+    }
+
+    @Test
     void unknownUserThrowsSpringAuthenticationException() {
         UserCredentialsDto credentials = new UserCredentialsDto();
         credentials.setEmail("missing@example.com");
