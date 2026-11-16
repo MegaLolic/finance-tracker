@@ -2,6 +2,8 @@ package org.portfolio.userservice;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.portfolio.userservice.controller.AuthController;
 import org.portfolio.userservice.controller.UserController;
 import org.portfolio.userservice.exception.GlobalExceptionHandler;
@@ -17,10 +19,58 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.mockito.ArgumentMatchers.argThat;
 
 class AuthErrorApiTest {
     private UserService service;
     private MockMvc mvc;
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a", "я", "😀"})
+    void registrationAcceptsExactly72Utf8Bytes(String character) throws Exception {
+        int bytes = character.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        String password = character.repeat(72 / bytes);
+        mvc.perform(post("/users/registration").contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationBody(password)))
+                .andExpect(status().isCreated());
+        verify(service).createUser(argThat(input -> password.equals(input.getPassword())));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a", "я", "😀"})
+    void registrationRejectsPasswordsExceeding72Utf8Bytes(String character) throws Exception {
+        int bytes = character.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        String password = character.repeat(72 / bytes + 1);
+        mvc.perform(post("/users/registration").contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationBody(password)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.password").value("Password must not exceed 72 UTF-8 bytes"));
+        verifyNoInteractions(service);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "short"})
+    void registrationStillRejectsBlankOrShortPasswords(String password) throws Exception {
+        mvc.perform(post("/users/registration").contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationBody(password)))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(service);
+    }
+
+    private String registrationBody(String password) {
+        return "{\"name\":\"Test\",\"surname\":\"User\",\"email\":\"user@example.com\",\"password\":\""
+                + password + "\"}";
+    }
+
+    @Test
+    void registrationStillRejectsMissingPassword() throws Exception {
+        mvc.perform(post("/users/registration").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Test\",\"surname\":\"User\",\"email\":\"user@example.com\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.password").value("Password must not be blank"));
+        verifyNoInteractions(service);
+    }
 
     @BeforeEach
     void setUp() {
