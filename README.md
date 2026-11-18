@@ -24,7 +24,7 @@ Java 21 / Spring Boot backend для личного учёта финансов.
 | API Gateway, Swagger | http://localhost:9000/swagger-ui.html |
 | user-service | 8080 |
 | finance-service | 8081 |
-| analytical-service (обработчики событий, health/metrics) | 8082 |
+| analytical-service (отчёты, обработчики событий, health/metrics) | 8082 |
 | Kafka UI | http://localhost:8070 |
 | Prometheus targets / alerts | http://localhost:9090/targets / http://localhost:9090/alerts |
 | Grafana | http://localhost:3000 |
@@ -41,13 +41,13 @@ Java-клиенты Kafka используют `localhost:9092`, Docker-клие
 сначала останови его и сохрани `/tmp/kafka-logs` через `docker cp`, затем восстанови
 содержимое в volume с владельцем `1000:1000`, сохранив `meta.properties`/cluster ID.
 
-Адреса gateway задаются через `services.user.url` / `services.finance.url`;
+Адреса gateway задаются через `services.user.url` / `services.finance.url` / `services.analytics.url`;
 `user.service.url` задаёт адрес user-service для finance. `KAFKA_BOOTSTRAP_SERVERS`
 переопределяет Kafka. Порт можно изменить стандартным `--server.port=...`.
 
 ## API
 
-Через gateway доступны `/users/**`, `/auth/**`, `/finance/**`. Регистрация
+Через gateway доступны `/users/**`, `/auth/**`, `/finance/**`, `/analytics/**`. Регистрация
 `POST /users/registration` принимает `name`, `surname`, `email`, `password`.
 Имена — до 100 символов; пароль — минимум 8 символов, максимум 72 байта UTF-8.
 `POST /auth/sign-in` принимает email/password и возвращает `token`/`refreshToken`.
@@ -67,8 +67,34 @@ POST не дедуплицируется: после сетевого тайма
 `DELETE /users/{id}` возвращает **202**, то есть запрос сохранён, но очистка ещё
 выполняется. Вход/refresh после начала удаления отклоняются. Завершение проверяется
 по `user_deletion_requests`: оба флага и `completed_at` (подробнее в ARCHITECTURE.md).
-Публичного API отчётов аналитики пока нет: analytical-service строит проекцию.
+Отчёты аналитики доступны через `/analytics/summary` и `/analytics/summary/range`.
 Refresh действует до истечения срока; отдельного отзыва сессии/logout API нет.
+
+### Базовая аналитика
+
+Запросы требуют access JWT и `accountId`. Пользователь определяется из JWT.
+Сводка считается по одному счёту: валюта отсутствует в Kafka-событиях, поэтому
+суммирования разных счетов и конвертации валют нет. Неизвестный/чужой счёт и пустой
+период возвращают нулевую сводку без раскрытия существования чужих данных.
+
+- День: `GET /analytics/summary?accountId=1&period=DAY&date=2026-11-17`.
+- Неделя, содержащая дату: `period=WEEK` (понедельник–воскресенье).
+- Календарный месяц: `period=MONTH`; календарный год: `period=YEAR`.
+- Произвольный период: `GET /analytics/summary/range?accountId=1&from=2026-11-01&to=2026-11-17`.
+
+`date`, `from`, `to` — даты `YYYY-MM-DD`; обе даты диапазона включены.
+`timezone` необязателен, по умолчанию `UTC`; для местных границ добавь
+`&timezone=Europe/Minsk`. Неверные даты, период, часовой пояс, неположительный
+`accountId` и обратный диапазон возвращают 400.
+
+Ответ содержит `totalIncome`, `totalExpense`, `netAmount` (доходы минус расходы),
+`incomeCount`, `expenseCount`, `transactionCount`, `averageIncome`, `averageExpense`
+и `categories` с ID/типом категории, суммой и количеством операций.
+Средние — на одну операцию соответствующего типа, округление до 2 знаков HALF_UP.
+`netAmount` отражает изменение за период и не включает начальный баланс счёта.
+Аналитика использует `createdAt` операции и обновляется после доставки Kafka:
+сразу после записи в finance отчёт может ещё содержать предыдущую версию.
+Изменения относятся к исходной дате создания операции; удалённые операции исключены.
 
 ## Проверки
 

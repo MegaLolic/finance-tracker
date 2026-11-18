@@ -15,5 +15,7 @@ public class MongoIndexConfig {
     public void createIndexes() {
         // createIndex is idempotent and also covers cleanup's userId filter.
         mongo.getCollection("raw_transactions").createIndex(Indexes.ascending("userId"));
+        mongo.getCollection("raw_transactions").createIndex(
+                Indexes.ascending("userId", "accountId", "deleted", "createdAt"));
     }
 }
