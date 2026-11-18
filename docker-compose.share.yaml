@@ -1,0 +1,26 @@
+name: finance-assistance-ngrok
+
+services:
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: finance-assistance-ngrok
+    restart: unless-stopped
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:?Run scripts/share.ps1 set-token first}
+    command:
+      - http
+      - http://host.docker.internal:4173
+      - --inspect=false
+      - --log=stdout
+      - --log-format=json
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
